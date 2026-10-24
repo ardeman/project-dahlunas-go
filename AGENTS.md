@@ -32,5 +32,6 @@ A change is done only when the **Checks** command in `README.md` passes. If you 
 
 Record architectural choices here as one line each: date, decision, reason.
 
+- 2026-10-24: Unlock code v1 uses a fixed binary payload and a full Ed25519 signature in unpadded Base32 (148 characters including prefix), with per-project key IDs for rotation; copy/paste and QR scanning preserve offline public-key verification without truncating signatures for a short manual code. Contract: `docs/code-format.md`.
 - 2026-10-24: Go with htmx on Cloud Run behind Firebase Hosting (the user's choice of a light, fast server on Firebase): Go starts fast in a small container, has Ed25519 in the standard library, and Xendit has an official Go SDK. Region `asia-southeast2` (Jakarta), close to the first buyers. Chosen over TypeScript on Firebase Functions (the user's choice): leaner and faster, few dependencies for money code, at the cost of a second deploy tool; TypeScript 7's Go compiler speeds up builds only, not the Node runtime.
 - 2026-10-24: Xendit first: it opens individual accounts with a KTP (instant activation for receiving money), has payment links and webhooks, and takes QRIS, e-wallets and cards.

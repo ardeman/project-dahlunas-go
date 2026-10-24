@@ -27,12 +27,13 @@ Go (standard library first) with htmx pages, running on Cloud Run behind Firebas
 - `internal/web/` holds routes, page templates (`templates/`) and static files (`static/`, htmx vendored at 2.0.4).
 - `public/` is Firebase Hosting's folder; every request is rewritten to the Cloud Run service `dahlunas` in `asia-southeast2` (Jakarta).
 - `.github/workflows/checks.yml` runs the Checks command on pushes and pull requests.
+- `docs/code-format.md` specifies the shared offline unlock-code format for Dahlunas and the apps.
 
 The starter serves a bilingual homepage at `/`, a health check at `/healthz`, and embedded htmx at `/static/htmx.min.js`. Payments and unlock codes are planned below.
 
 ## Roadmap
 
-1. **Code format** shared with the apps: a short code to type by hand, carrying project, product, id and date, signed with Ed25519. Each project has its own key pair: the private key lives only in Secret Manager, and the app holds the public key. Write the format down in `docs/` before building it, since every app must read it the same way.
+1. **Code format specified:** [version 1](docs/code-format.md) carries project, product, id and date, signed with Ed25519. Codes are 148 characters for copy/paste or QR scanning, with optional grouping for manual entry. Each project has its own keys: private keys stay in Secret Manager, and apps bundle public keys. Next, implement signing and offline verification with compatibility tests against the documented fixture.
 2. **Minting:** a command (`cmd/mint`) that makes a code by hand, for orders before the webhook exists.
 3. **Xendit:** create payment links per project and product; receive the payment webhook, check its token, make the code and email it to the buyer. A payment must never send two codes, even when the webhook comes twice.
 4. **Projects:** per-project config (products, prices, key, email wording in Indonesian and English).
