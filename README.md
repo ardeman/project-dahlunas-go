@@ -44,8 +44,6 @@ The starter serves a bilingual homepage at `/`, a health check at `/healthz`, an
    - Card fraud and chargebacks: keep amounts small; codes checked offline can't be taken back.
    - Xendit may ask for more documents as volume grows; taxes (NPWP, VAT abroad).
 
-Coba Lagi's side (checking codes in its GitHub builds, its support page) lives in `../project_cobalagi_flutter`.
-
 ## License
 
 Dahlunas is licensed under the [MIT License](LICENSE). The vendored [htmx 2.0.4](https://github.com/bigskysoftware/htmx/tree/v2.0.4) script uses the [Zero-Clause BSD license](internal/web/static/htmx.LICENSE).
