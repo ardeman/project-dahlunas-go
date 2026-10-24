@@ -1,0 +1,7 @@
+.env
+/dahlunas
+*.pem
+*.key
+firebase-debug.log
+.firebase/
+.DS_Store

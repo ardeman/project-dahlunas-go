@@ -1,0 +1,11 @@
+.gcloudignore
+.git
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+.firebase
+firebase-debug.log
+dahlunas
+.DS_Store
