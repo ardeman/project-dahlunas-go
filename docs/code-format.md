@@ -1,7 +1,7 @@
 # Unlock code format, version 1
 
-Status: specified for implementation; the server does not issue codes yet. Apps
-and Dahlunas must implement this contract before accepting real purchases.
+Status: implemented in `internal/unlock` and `cmd/mint`; codes are minted by
+hand until the payment webhook exists.
 
 An unlock code carries an entitlement signed with a project's Ed25519 key. The
 app verifies it locally using a bundled public key. Verification never contacts
@@ -83,8 +83,9 @@ signature or implement the cryptographic algorithm by hand.
 
 Each project has its own signing keys. Private keys come from environment
 variables (Secret Manager in production) and must never be committed, printed or
-logged. A private key's provisioning format will be specified with `cmd/mint`;
-it is not part of the code format. Apps bundle only the 32-byte public keys,
+logged. A private key is provisioned as its 32-byte Ed25519 seed in hex, in
+`DAHLUNAS_KEY_<project>_<key id>` (made by `cmd/mint new-key`); this is not part
+of the code format. Apps bundle only the 32-byte public keys,
 indexed by key ID for their own project.
 
 ## Verification and activation

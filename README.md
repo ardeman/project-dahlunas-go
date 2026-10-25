@@ -18,23 +18,27 @@ Go (standard library first) with htmx pages, running on Cloud Run behind Firebas
 | Run locally | `go run ./cmd/server` (http://localhost:8080) |
 | Test | `go test ./...` |
 | Checks | `test -z "$(gofmt -l .)" && go vet ./... && go test ./...` |
+| Make a signing key | `go run ./cmd/mint new-key -project 1 -key 1` (writes the seed to a `.key` file, prints the public key) |
+| Mint a code by hand | `go run ./cmd/mint code -project 1 -product 1 -key 1` (reads `DAHLUNAS_KEY_1_1`) |
 | Deploy the service | `gcloud run deploy dahlunas --source . --region asia-southeast2` |
 | Deploy Hosting | `firebase deploy --only hosting` |
 
 ## Layout
 
 - `cmd/server/` starts the HTTP server (`PORT`, set by Cloud Run).
+- `cmd/mint/` makes signing keys and unlock codes by hand.
+- `internal/unlock/` makes and checks unlock codes ([format](docs/code-format.md)) and reads signing keys: `DAHLUNAS_KEY_<project>_<key id>` holds the key's 32-byte Ed25519 seed in hex.
 - `internal/web/` holds routes, page templates (`templates/`) and static files (`static/`, htmx vendored at 2.0.4).
 - `public/` is Firebase Hosting's folder; every request is rewritten to the Cloud Run service `dahlunas` in `asia-southeast2` (Jakarta).
 - `.github/workflows/checks.yml` runs the Checks command on pushes and pull requests.
 - `docs/code-format.md` specifies the shared offline unlock-code format for Dahlunas and the apps.
 
-The starter serves a bilingual homepage at `/`, a health check at `/healthz`, and embedded htmx at `/static/htmx.min.js`. Payments and unlock codes are planned below.
+The starter serves a bilingual homepage at `/`, a health check at `/healthz`, and embedded htmx at `/static/htmx.min.js`. Payments are planned below.
 
 ## Roadmap
 
-1. **Code format specified:** [version 1](docs/code-format.md) carries project, product, id and date, signed with Ed25519. Codes are 148 characters for copy/paste or QR scanning, with optional grouping for manual entry. Each project has its own keys: private keys stay in Secret Manager, and apps bundle public keys. Next, implement signing and offline verification with compatibility tests against the documented fixture.
-2. **Minting:** a command (`cmd/mint`) that makes a code by hand, for orders before the webhook exists.
+1. **Code format:** [version 1](docs/code-format.md) carries project, product, id and date, signed with Ed25519, in 148 characters for copy/paste or QR scanning. `internal/unlock` makes and checks it, tested against the documented fixture.
+2. **Minting:** `cmd/mint` makes a project's signing key (the seed goes to a file for Secret Manager, never to the screen) and codes by hand, for orders before the webhook exists.
 3. **Xendit:** create payment links per project and product; receive the payment webhook, check its token, make the code and email it to the buyer. A payment must never send two codes, even when the webhook comes twice.
 4. **Projects:** per-project config (products, prices, key, email wording in Indonesian and English).
 5. **Worldwide:** international cards through Xendit if the individual account allows them, else a second gateway behind the same interface.
