@@ -75,6 +75,7 @@
       "en": "Bedug"
     },
     "icon": "bedug-icon.png",
+    "activation": true,
     "email": {
       "subject": {
         "id": "Kode infaq Bedug",
@@ -99,8 +100,8 @@
           "en": "Bedug infaq"
         },
         "description": {
-          "id": "Infaq untuk pengembangan Bedug, dengan kode untuk versi Windows dan Linux (Microsoft Store, Flathub). Bedug tetap gratis; semua pilihan sama, kode menandai infaq Anda di aplikasi dan mematikan iklan bila versi itu menampilkannya. Kode tidak berlaku di versi App Store atau Google Play.",
-          "en": "Infaq supporting Bedug's development, with a code for Windows and Linux builds (Microsoft Store, Flathub). Bedug stays free; every option is the same: the code marks your infaq in the app and turns ads off where that build shows them. Codes do not apply to App Store or Google Play builds."
+          "id": "Infaq untuk pengembangan Bedug, dengan kode untuk versi Windows dan Linux (Microsoft Store, Flathub). Bedug tetap gratis; semua pilihan sama, kode menandai infaq Anda di aplikasi dan mematikan iklan bila versi itu menampilkannya. Kode tidak berlaku di versi App Store atau Google Play. Kode aktif di satu perangkat (perlu internet saat dimasukkan) dan bisa dipindah ke perangkat lain hingga 3 kali.",
+          "en": "Infaq supporting Bedug's development, with a code for Windows and Linux builds (Microsoft Store, Flathub). Bedug stays free; every option is the same: the code marks your infaq in the app and turns ads off where that build shows them. Codes do not apply to App Store or Google Play builds. A code is active on one device (entering it needs internet) and can move to another device up to 3 times."
         }
       },
       {
@@ -112,8 +113,8 @@
           "en": "Bedug infaq"
         },
         "description": {
-          "id": "Infaq untuk pengembangan Bedug, dengan kode untuk versi Windows dan Linux (Microsoft Store, Flathub). Bedug tetap gratis; semua pilihan sama, kode menandai infaq Anda di aplikasi dan mematikan iklan bila versi itu menampilkannya. Kode tidak berlaku di versi App Store atau Google Play.",
-          "en": "Infaq supporting Bedug's development, with a code for Windows and Linux builds (Microsoft Store, Flathub). Bedug stays free; every option is the same: the code marks your infaq in the app and turns ads off where that build shows them. Codes do not apply to App Store or Google Play builds."
+          "id": "Infaq untuk pengembangan Bedug, dengan kode untuk versi Windows dan Linux (Microsoft Store, Flathub). Bedug tetap gratis; semua pilihan sama, kode menandai infaq Anda di aplikasi dan mematikan iklan bila versi itu menampilkannya. Kode tidak berlaku di versi App Store atau Google Play. Kode aktif di satu perangkat (perlu internet saat dimasukkan) dan bisa dipindah ke perangkat lain hingga 3 kali.",
+          "en": "Infaq supporting Bedug's development, with a code for Windows and Linux builds (Microsoft Store, Flathub). Bedug stays free; every option is the same: the code marks your infaq in the app and turns ads off where that build shows them. Codes do not apply to App Store or Google Play builds. A code is active on one device (entering it needs internet) and can move to another device up to 3 times."
         }
       },
       {
@@ -125,8 +126,8 @@
           "en": "Bedug infaq"
         },
         "description": {
-          "id": "Infaq untuk pengembangan Bedug, dengan kode untuk versi Windows dan Linux (Microsoft Store, Flathub). Bedug tetap gratis; semua pilihan sama, kode menandai infaq Anda di aplikasi dan mematikan iklan bila versi itu menampilkannya. Kode tidak berlaku di versi App Store atau Google Play.",
-          "en": "Infaq supporting Bedug's development, with a code for Windows and Linux builds (Microsoft Store, Flathub). Bedug stays free; every option is the same: the code marks your infaq in the app and turns ads off where that build shows them. Codes do not apply to App Store or Google Play builds."
+          "id": "Infaq untuk pengembangan Bedug, dengan kode untuk versi Windows dan Linux (Microsoft Store, Flathub). Bedug tetap gratis; semua pilihan sama, kode menandai infaq Anda di aplikasi dan mematikan iklan bila versi itu menampilkannya. Kode tidak berlaku di versi App Store atau Google Play. Kode aktif di satu perangkat (perlu internet saat dimasukkan) dan bisa dipindah ke perangkat lain hingga 3 kali.",
+          "en": "Infaq supporting Bedug's development, with a code for Windows and Linux builds (Microsoft Store, Flathub). Bedug stays free; every option is the same: the code marks your infaq in the app and turns ads off where that build shows them. Codes do not apply to App Store or Google Play builds. A code is active on one device (entering it needs internet) and can move to another device up to 3 times."
         }
       }
     ]

@@ -62,6 +62,7 @@ func Handler(options ...Options) http.Handler {
 	}
 	registerShop(mux, config)
 	registerTasks(mux, config)
+	registerActivations(mux, config)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// no-referrer would make browsers post forms with Origin: null, failing the checkout origin check.

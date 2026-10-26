@@ -125,7 +125,7 @@ func Handler() (http.Handler, error) {
 		}
 		gateways[payment.LemonSqueezy] = client
 	}
-	config.Shop = &shop.Service{Store: store, Gateways: gateways, Mailer: delivery.New(os.Getenv("RESEND_API_KEY"), os.Getenv("RESEND_FROM"), config.Support), Products: products, BaseURL: base, SigningKey: unlock.KeyFromEnv}
+	config.Shop = &shop.Service{Store: store, Activations: store, Gateways: gateways, Mailer: delivery.New(os.Getenv("RESEND_API_KEY"), os.Getenv("RESEND_FROM"), config.Support), Products: products, BaseURL: base, SigningKey: unlock.KeyFromEnv}
 	siteKey, secret := strings.TrimSpace(os.Getenv("TURNSTILE_SITE_KEY")), strings.TrimSpace(os.Getenv("TURNSTILE_SECRET_KEY"))
 	if (siteKey == "") != (secret == "") || (production && siteKey == "") {
 		return nil, errors.New("TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY must both be set; required for production checkout")

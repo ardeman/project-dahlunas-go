@@ -170,3 +170,54 @@ func TestSaveWritesDeliveryPendingField(t *testing.T) {
 		t.Fatal("pending order not flagged")
 	}
 }
+
+func TestActivationsUseOwnCollectionAndConditions(t *testing.T) {
+	var stored document
+	revision := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.Contains(r.URL.Path, "/activations-sandbox/") {
+			t.Error("wrong collection", r.URL.Path)
+		}
+		if r.Method == "PATCH" {
+			q := r.URL.Query()
+			if (q.Get("currentDocument.exists") == "false" && revision != 0) || (q.Get("currentDocument.updateTime") != "" && q.Get("currentDocument.updateTime") != stored.UpdateTime) {
+				w.WriteHeader(412)
+				return
+			}
+			json.NewDecoder(r.Body).Decode(&stored)
+			revision++
+			stored.UpdateTime = "2026-10-26T00:00:0" + strconv.Itoa(revision) + "Z"
+		}
+		if revision == 0 {
+			http.NotFound(w, r)
+			return
+		}
+		json.NewEncoder(w).Encode(stored)
+	}))
+	defer server.Close()
+	f, _ := New("test-project", "local-token", "", false)
+	f.activations = server.URL + "/activations-sandbox/"
+	ctx := context.Background()
+	a := shop.ActivationRecord{CodeID: strings.Repeat("b", 32), Project: 2, Device: strings.Repeat("c", 64)}
+	if _, err := f.GetActivation(ctx, a.CodeID); !errors.Is(err, shop.ErrNotFound) {
+		t.Fatal(err)
+	}
+	if err := f.CreateActivation(ctx, a); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.CreateActivation(ctx, a); !errors.Is(err, shop.ErrConflict) {
+		t.Fatal("duplicate create", err)
+	}
+	got, err := f.GetActivation(ctx, a.CodeID)
+	if err != nil || got.Device != a.Device || got.Revision == "" {
+		t.Fatal(got, err)
+	}
+	stale := got
+	got.Moves = 1
+	if err := f.SaveActivation(ctx, got); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.SaveActivation(ctx, stale); !errors.Is(err, shop.ErrConflict) {
+		t.Fatal("stale save", err)
+	}
+}

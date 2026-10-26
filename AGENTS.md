@@ -32,6 +32,8 @@ A change is done only when the **Checks** command in `README.md` passes. If you 
 
 Record architectural choices here as one line each: date, decision, reason.
 
+- 2026-10-26: Bedug codes are bound to one device: the app activates a code through `POST /activations` with a random install ID (never a hardware ID), Dahlunas keeps a per-code record with the install ID's hash and signs an activation the app checks offline. Entering the code elsewhere moves it, at most 3 times (then support resets it); the weekly check never moves it. Bedug goes online, while children's apps stay offline-only, so activation is a per-project catalog opt-in. Contract: `docs/activation.md`.
+
 - 2026-10-26: Bedug joins as project 2, selling infaq codes only to its Windows and Linux builds, where store billing doesn't exist; its phone and Mac App Store builds keep in-app purchase, as store rules require. More projects come through per-environment catalogs in `config/`, copied into the image, since sandbox and production sign with different key IDs; production keeps the embedded Coba Lagi catalog until an app can accept a new project's codes. Catat Saja Plus will be a real subscription written to the buyer's account, not a code (planned, README → Roadmap).
 
 - 2026-10-26: The home page groups products by project, with an optional catalog name, icon and per-language screenshot served from `internal/web/static/products/`; file names only, never URLs, so no third-party image request exposes buyer IPs. Rupiah prices group thousands with dots (`Rp 19.000`).

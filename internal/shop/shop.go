@@ -36,6 +36,8 @@ type Product struct {
 	ProjectName         Text
 	Icon                string
 	ProjectImage, Image Text
+	// Activation lets a code be activated on one device at a time.
+	Activation bool
 }
 
 type Order struct {
@@ -85,14 +87,15 @@ type Mailer interface {
 }
 
 type Service struct {
-	Store      Store
-	Gateway    payment.Gateway
-	Gateways   map[string]payment.Gateway
-	Mailer     Mailer
-	Products   []Product
-	BaseURL    string
-	SigningKey func(uint16, uint8) (ed25519.PrivateKey, error)
-	Now        func() time.Time
+	Store       Store
+	Activations ActivationStore
+	Gateway     payment.Gateway
+	Gateways    map[string]payment.Gateway
+	Mailer      Mailer
+	Products    []Product
+	BaseURL     string
+	SigningKey  func(uint16, uint8) (ed25519.PrivateKey, error)
+	Now         func() time.Time
 }
 
 // GatewayName and CurrencyCode preserve orders from the original IDR checkout.

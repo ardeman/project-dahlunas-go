@@ -26,7 +26,7 @@ sandbox, 2 in production), so each environment has its own catalog file.
 | ID | Project | Sandbox | Production |
 | --- | --- | --- | --- |
 | 1 | Coba Lagi: sponsor codes for GitHub builds | key 1 | key 2 (embedded default) |
-| 2 | Bedug: infaq codes for Windows and Linux builds (Microsoft Store, Flathub) | key 1 ([`catalog-sandbox.json`](../config/catalog-sandbox.json)) | not yet: added once Bedug's desktop builds accept codes |
+| 2 | Bedug: infaq codes for Windows and Linux builds (Microsoft Store, Flathub), one device at a time | key 1 ([`catalog-sandbox.json`](../config/catalog-sandbox.json)) | not yet: added once Bedug's desktop builds accept codes |
 
 Bedug's phone and Mac App Store builds keep store in-app purchase, as store rules
 require; its codes, like Coba Lagi's, are checked offline. Catat Saja is planned
@@ -43,6 +43,10 @@ The top level is a nonempty array of projects. Each project contains:
   `coba-lagi-icon.png`.
 - `image` (optional): a screenshot shown above the products, with an `id` and
   an `en` file name so each language sees its own.
+- `activation` (optional): `true` binds each code to one device at a time
+  through `POST /activations` ([device activation](activation.md)). Only for apps
+  that may go online; never for children's apps. Say so in the products'
+  descriptions.
 - `email`: `subject`, `thank_you`, and `instructions`, each with nonempty `id`
   (Indonesian) and `en` (English) text. Instructions appear on the paid page too.
 - `products`: a nonempty array, each containing `slug`, `id`, `price`, `name`,

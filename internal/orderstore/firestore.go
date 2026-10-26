@@ -18,10 +18,10 @@ import (
 
 type Firestore struct {
 	// documents is the database's documents URL; base adds the collection.
-	documents, collection, base string
-	client                      *http.Client
-	token                       string
-	emulator                    bool
+	documents, collection, base, activations string
+	client                                   *http.Client
+	token                                    string
+	emulator                                 bool
 }
 
 // New uses Cloud Run's attached service account when token is empty. For local
@@ -42,12 +42,12 @@ func New(project, token, host string, production bool) (*Firestore, error) {
 		}
 		root = u.String()
 	}
-	collection := "orders-sandbox"
+	collection, activations := "orders-sandbox", "activations-sandbox"
 	if production {
-		collection = "orders-production"
+		collection, activations = "orders-production", "activations-production"
 	}
 	documents := root + "/v1/projects/" + project + "/databases/(default)/documents"
-	return &Firestore{documents: documents, collection: collection, base: documents + "/" + collection + "/", token: token, emulator: host != "", client: &http.Client{Timeout: 15 * time.Second}}, nil
+	return &Firestore{documents: documents, collection: collection, base: documents + "/" + collection + "/", activations: documents + "/" + activations + "/", token: token, emulator: host != "", client: &http.Client{Timeout: 15 * time.Second}}, nil
 }
 
 // The order is one JSON payload; deliveryPending and awaitingPayment are
@@ -113,20 +113,30 @@ func (f *Firestore) request(ctx context.Context, method, id, query string, o *sh
 		}
 		body = bytes.NewReader(b)
 	}
-	r, err := http.NewRequestWithContext(ctx, method, f.base+id+query, body)
+	d, err := f.exchange(ctx, method, f.base+id+query, body)
 	if err != nil {
-		return shop.Order{}, errors.New("store: request failed")
+		return shop.Order{}, err
+	}
+	return decode(d, id)
+}
+
+// exchange sends one document request, mapping failed preconditions to
+// shop.ErrConflict and a missing document to shop.ErrNotFound.
+func (f *Firestore) exchange(ctx context.Context, method, target string, body io.Reader) (document, error) {
+	r, err := http.NewRequestWithContext(ctx, method, target, body)
+	if err != nil {
+		return document{}, errors.New("store: request failed")
 	}
 	resp, err := f.do(ctx, r)
 	if err != nil {
-		return shop.Order{}, err
+		return document{}, err
 	}
 	defer resp.Body.Close()
 	switch resp.StatusCode {
 	case 404:
-		return shop.Order{}, shop.ErrNotFound
+		return document{}, shop.ErrNotFound
 	case 409, 412:
-		return shop.Order{}, shop.ErrConflict
+		return document{}, shop.ErrConflict
 	}
 	if resp.StatusCode == 400 {
 		var failure struct {
@@ -135,17 +145,17 @@ func (f *Firestore) request(ctx context.Context, method, id, query string, o *sh
 			} `json:"error"`
 		}
 		if json.NewDecoder(io.LimitReader(resp.Body, 8192)).Decode(&failure) == nil && failure.Error.Status == "FAILED_PRECONDITION" {
-			return shop.Order{}, shop.ErrConflict
+			return document{}, shop.ErrConflict
 		}
 	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return shop.Order{}, errors.New("store: operation failed")
+		return document{}, errors.New("store: operation failed")
 	}
 	var d document
 	if json.NewDecoder(io.LimitReader(resp.Body, 128<<10)).Decode(&d) != nil {
-		return shop.Order{}, errors.New("store: invalid record")
+		return document{}, errors.New("store: invalid record")
 	}
-	return decode(d, id)
+	return d, nil
 }
 
 func (f *Firestore) do(ctx context.Context, r *http.Request) (*http.Response, error) {
@@ -230,5 +240,52 @@ func (f *Firestore) Save(ctx context.Context, o shop.Order) error {
 		return shop.ErrConflict
 	}
 	_, err := f.request(ctx, http.MethodPatch, o.ID, "?currentDocument.updateTime="+url.QueryEscape(o.Revision), &o)
+	return err
+}
+
+// Activation records live in their own collection, one document per code ID,
+// as one JSON payload like orders.
+func (f *Firestore) activation(ctx context.Context, method, id, query string, a *shop.ActivationRecord) (shop.ActivationRecord, error) {
+	if !orderID.MatchString(id) {
+		return shop.ActivationRecord{}, shop.ErrNotFound
+	}
+	var body io.Reader
+	if a != nil {
+		payload, err := json.Marshal(a)
+		if err != nil {
+			return shop.ActivationRecord{}, err
+		}
+		text := string(payload)
+		b, err := json.Marshal(document{Fields: map[string]value{"payload": {String: &text}}})
+		if err != nil {
+			return shop.ActivationRecord{}, err
+		}
+		body = bytes.NewReader(b)
+	}
+	d, err := f.exchange(ctx, method, f.activations+id+query, body)
+	if err != nil {
+		return shop.ActivationRecord{}, err
+	}
+	var result shop.ActivationRecord
+	payload := d.Fields["payload"].String
+	if payload == nil || json.Unmarshal([]byte(*payload), &result) != nil || result.CodeID != id || d.UpdateTime == "" {
+		return shop.ActivationRecord{}, errors.New("store: invalid record")
+	}
+	result.Revision = d.UpdateTime
+	return result, nil
+}
+
+func (f *Firestore) CreateActivation(ctx context.Context, a shop.ActivationRecord) error {
+	_, err := f.activation(ctx, http.MethodPatch, a.CodeID, "?currentDocument.exists=false", &a)
+	return err
+}
+func (f *Firestore) GetActivation(ctx context.Context, id string) (shop.ActivationRecord, error) {
+	return f.activation(ctx, http.MethodGet, id, "", nil)
+}
+func (f *Firestore) SaveActivation(ctx context.Context, a shop.ActivationRecord) error {
+	if a.Revision == "" {
+		return shop.ErrConflict
+	}
+	_, err := f.activation(ctx, http.MethodPatch, a.CodeID, "?currentDocument.updateTime="+url.QueryEscape(a.Revision), &a)
 	return err
 }

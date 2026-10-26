@@ -26,15 +26,17 @@ type EmailCopy struct {
 }
 
 // ProjectConfig's name, icon and image are optional; they group and illustrate
-// the project's products on the home page.
+// the project's products on the home page. Activation binds its codes to one
+// device through Dahlunas; children's apps never set it.
 type ProjectConfig struct {
-	ID       uint16          `json:"id"`
-	KeyID    uint8           `json:"key_id"`
-	Name     Text            `json:"name"`
-	Icon     string          `json:"icon,omitempty"`
-	Image    Text            `json:"image"`
-	Email    EmailCopy       `json:"email"`
-	Products []ProductConfig `json:"products"`
+	ID         uint16          `json:"id"`
+	KeyID      uint8           `json:"key_id"`
+	Name       Text            `json:"name"`
+	Icon       string          `json:"icon,omitempty"`
+	Image      Text            `json:"image"`
+	Activation bool            `json:"activation,omitempty"`
+	Email      EmailCopy       `json:"email"`
+	Products   []ProductConfig `json:"products"`
 }
 
 type ProductConfig struct {
@@ -109,7 +111,7 @@ func ParseCatalog(r io.Reader) ([]Product, error) {
 				return nil, errors.New("catalog: require Midtrans/IDR or Lemon Squeezy/USD with numeric variant_id (USD limit 100000 cents)")
 			}
 			slugs[p.Slug] = true
-			products = append(products, Product{Slug: p.Slug, NameID: p.Name.ID, NameEN: p.Name.EN, DescriptionID: p.Description.ID, DescriptionEN: p.Description.EN, Price: p.Price, Project: project.ID, Product: p.ID, KeyID: project.KeyID, Delivery: copy, Gateway: gateway, Currency: currency, VariantID: p.VariantID, ProjectName: project.Name, Icon: project.Icon, ProjectImage: project.Image, Image: p.Image})
+			products = append(products, Product{Slug: p.Slug, NameID: p.Name.ID, NameEN: p.Name.EN, DescriptionID: p.Description.ID, DescriptionEN: p.Description.EN, Price: p.Price, Project: project.ID, Product: p.ID, KeyID: project.KeyID, Delivery: copy, Gateway: gateway, Currency: currency, VariantID: p.VariantID, ProjectName: project.Name, Icon: project.Icon, ProjectImage: project.Image, Image: p.Image, Activation: project.Activation})
 		}
 	}
 	return products, nil
