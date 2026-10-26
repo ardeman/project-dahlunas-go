@@ -48,7 +48,7 @@ Go (standard library first) with htmx pages, running on Cloud Run behind Firebas
 - `internal/payment/` defines the gateway interface; `internal/midtrans/` implements Snap and verified notifications, and `internal/lemonsqueezy/` implements optional USD hosted checkout and signed notifications ([setup](docs/lemonsqueezy.md)).
 - `internal/orderstore/` persists orders in Firestore with conditional writes; `internal/delivery/` sends bilingual code emails through Resend.
 - `public/` is Firebase Hosting's folder; every request is rewritten to the Cloud Run service `dahlunas` in `asia-southeast2` (Jakarta).
-- `.github/workflows/checks.yml` runs the Checks command on pushes and pull requests.
+- `.github/workflows/checks.yml` runs the Checks command on pushes and pull requests, then deploys both Cloud Run services from `main`.
 - `docs/code-format.md` specifies the shared offline unlock-code format for Dahlunas and the apps.
 
 The server serves a bilingual shop at `/`, policies at `/terms`, `/refunds` and `/privacy`, private order pages at `/orders/{id}/{token}`, Midtrans notifications at `/webhooks/midtrans`, optional Lemon Squeezy notifications at `/webhooks/lemonsqueezy`, the scheduled delivery sweep at `/tasks/deliveries` (only with `DAHLUNAS_TASK_TOKEN`), and a health check at `/health`. With checkout disabled, the homepage says sales are not open.
