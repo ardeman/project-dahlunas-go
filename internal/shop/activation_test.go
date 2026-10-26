@@ -89,7 +89,12 @@ func TestActivationMovesBetweenDevices(t *testing.T) {
 	if _, _, err := s.Activate(ctx, coba, device(1), true); !errors.Is(err, ErrActivationOff) {
 		t.Fatal("Coba Lagi codes must never activate online", err)
 	}
-	for _, bad := range []struct{ code, install string }{{code, "short"}, {code, strings.ToUpper(device(10))}, {"DL1.broken", device(1)}, {code[:len(code)-1] + "A", device(1)}} {
+	// The final character may hold only padding bits, so tamper mid-code.
+	mid, swap := len(code)/2, "A"
+	if code[mid] == 'A' {
+		swap = "B"
+	}
+	for _, bad := range []struct{ code, install string }{{code, "short"}, {code, strings.ToUpper(device(10))}, {"DL1.broken", device(1)}, {code[:mid] + swap + code[mid+1:], device(1)}} {
 		if _, _, err := s.Activate(ctx, bad.code, bad.install, true); !errors.Is(err, ErrInput) {
 			t.Fatal("accepted", bad, err)
 		}
