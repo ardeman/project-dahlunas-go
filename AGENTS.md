@@ -32,6 +32,12 @@ A change is done only when the **Checks** command in `README.md` passes. If you 
 
 Record architectural choices here as one line each: date, decision, reason.
 
+- 2026-10-26: Checkout uses a bounded per-instance token bucket (burst 10, refill 30/minute) plus server-verified Turnstile required in production; avoids retaining buyer IPs or trusting proxy headers, while leaving payment webhooks unaffected. Fleet-wide edge quotas remain separate.
+
+- 2026-10-26: Lemon Squeezy uses optional USD catalog entries, signed webhooks plus authoritative order/item reads, and a per-order random payment proof; one shared production flag separates both gateways' test/live orders, while legacy records remain Midtrans/IDR. Prices are integer minor units and tax-exclusive; the default catalog stays Midtrans-only.
+
+- 2026-10-26: Owned projects use a validated JSON catalog with per-project signing key IDs and bilingual delivery copy; each order snapshots its product and wording so configuration changes cannot alter pending fulfillment. Secrets remain in environment variables.
+
 - 2026-10-26: Checkout uses Firestore Native mode with conditional REST writes and separate sandbox/production collections, so Cloud Run instances share durable orders without a database driver dependency. Resend delivers codes behind a mail interface, using a durable lease and provider idempotency keys; automatic retries stop after 23 hours, before Resend's 24-hour deduplication window expires, for manual review of ambiguous delivery.
 
 - 2026-10-24: Unlock code v1 uses a fixed binary payload and a full Ed25519 signature in unpadded Base32 (148 characters including prefix), with per-project key IDs for rotation; copy/paste and QR scanning preserve offline public-key verification without truncating signatures for a short manual code. Contract: `docs/code-format.md`.

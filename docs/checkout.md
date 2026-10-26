@@ -1,9 +1,12 @@
 # Checkout setup and operation
 
-The shop sells Coba Lagi sponsor codes for **GitHub builds only**, using project 1,
+For optional USD payments, see [Lemon Squeezy setup](lemonsqueezy.md).
+
+The default catalog sells Coba Lagi sponsor codes for **GitHub builds only**, using project 1,
 product 1. Rp5,000, Rp19,000 and Rp49,000 each unlock the same sponsor plan (up to
 six players and progress reports). Prices and IDs follow Coba Lagi's README and
-`assets/config/donations.json`. Store builds continue to use store billing.
+`assets/config/donations.json`. Store builds continue to use store billing. Other owned projects can be configured
+through the [project catalog](projects.md); the setup below describes the default.
 
 ## Local sandbox
 
@@ -34,7 +37,7 @@ six players and progress reports). Prices and IDs follow Coba Lagi's README and
    Set `DAHLUNAS_KEY_1_1` privately from the seed file. Add **only the printed public
    key** under key ID `1` in a test Coba Lagi build's `purchased_codes.public_keys`.
    Use different signing keys for sandbox and production. `SHOP_KEY_ID` selects
-   the active signing key; keep old public keys when rotating. Coba Lagi's public
+   the default catalog's active signing key (custom catalogs use per-project `key_id`); keep old public keys when rotating. Coba Lagi's public
    key list was empty when this checkout was implemented, so it needs provisioning
    before codes can unlock the app. Do not ship sandbox public keys in releases.
 6. Set up a verified sender domain in Resend. Set `RESEND_API_KEY`, `RESEND_FROM`
@@ -77,6 +80,33 @@ describe Dahlunas, Midtrans and the email provider's handling of purchase data.
 The app remains offline; only its website/parent purchase link leads to the shop.
 That separate repository is not modified by this checkout change.
 
+## Checkout abuse protection
+
+Checkout accepts a burst of ten POST requests per process, then refills one request
+every two seconds (30 per minute). Excess requests return HTTP 429 with
+`Retry-After: 2`, before any provider or database call. The limit applies to all
+checkout attempts, including invalid ones. Webhooks and order pages are unaffected.
+It stores no IP addresses and does not trust forwarded headers. The limit resets
+on restart and multiplies across Cloud Run instances; it is not a fleet-wide
+quota or DDoS defense. Add an edge-wide limit if traffic warrants it.
+
+Create a Cloudflare Turnstile managed widget restricted to the exact shop hostname.
+Set `TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` together; keep the secret in
+Secret Manager on Cloud Run. Production checkout refuses to start without both.
+Sandbox can omit both for local development; set both to exercise verification.
+Use a separate sandbox widget and do not deploy Cloudflare test keys in production.
+The browser must load Cloudflare's script and complete the challenge before checkout.
+The server verifies its single-use token, hostname and `checkout` action before
+creating an order. Missing, invalid, expired or reused tokens return 403; provider
+errors return 503. Reload the shop to obtain a fresh challenge after an error.
+No email or order data is sent by the server to Turnstile. The privacy page
+discloses Cloudflare's browser verification when enabled.
+
+Before opening sales, verify a successful challenge on the public sandbox hostname,
+then submit missing/reused tokens and confirm no order is created.
+See [Cloudflare server validation](https://developers.cloudflare.com/turnstile/get-started/server-side-validation/)
+and [widget setup](https://developers.cloudflare.com/turnstile/get-started/client-side-rendering/).
+
 ## Payment and delivery behavior
 
 - `POST /checkout` accepts a catalog slug and delivery email, with consent and
@@ -116,7 +146,7 @@ That separate repository is not modified by this checkout change.
 
 The repository Checks command covers gateway payloads/authentication, forged and
 pending statuses, amount mismatches, concurrent/duplicate webhooks, durable store
-preconditions, private order access, checkout CSRF, and email retries. Tests use
+preconditions, private order access, checkout CSRF, rate limits, challenge verification, and email retries. Tests use
 fake HTTP providers and do not create payments or send emails.
 
 The Firestore adapter's HTTP contract is tested with a local fake; an emulator or

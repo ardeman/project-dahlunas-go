@@ -23,10 +23,11 @@ func New(key, from, support string) *Resend {
 }
 
 func (r *Resend) Send(ctx context.Context, o shop.Order) error {
+	copy := o.Product.DeliveryCopy()
 	body := map[string]any{
 		"from": r.from, "to": []string{o.Email}, "reply_to": r.support,
-		"subject": "Kode Coba Lagi / Your Coba Lagi code",
-		"text":    "Terima kasih telah mendukung Coba Lagi! / Thank you for supporting Coba Lagi!\n\n" + o.Code + "\n\nMasukkan kode di area orang tua → Punya kode? (versi GitHub).\nEnter the code in the parent area → Have a code? (GitHub builds).\n\nPesanan / Order: " + o.ID + "\nBantuan / Support: " + r.support,
+		"subject": copy.Subject.ID + " / " + copy.Subject.EN,
+		"text":    copy.ThankYou.ID + " / " + copy.ThankYou.EN + "\n\n" + o.Code + "\n\n" + copy.Instructions.ID + "\n" + copy.Instructions.EN + "\n\nPesanan / Order: " + o.ID + "\nBantuan / Support: " + r.support,
 	}
 	b, err := json.Marshal(body)
 	if err != nil {

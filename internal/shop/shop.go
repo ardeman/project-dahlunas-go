@@ -29,31 +29,19 @@ type Product struct {
 	Price                                              int64
 	Project, Product                                   uint16
 	KeyID                                              uint8
-}
-
-// CobaLagi uses the prices and entitlement documented by the app repository.
-// All three support amounts unlock the same sponsor plan in GitHub builds.
-func CobaLagi() []Product {
-	var products []Product
-	for i, price := range []int64{5000, 19000, 49000} {
-		products = append(products, Product{
-			Slug: fmt.Sprintf("coba-lagi-%d", i+1), NameID: "Sponsor Coba Lagi", NameEN: "Coba Lagi sponsor",
-			DescriptionID: "Kode untuk versi GitHub: hingga enam pemain dan laporan perkembangan. Semua pilihan membuka fitur yang sama.",
-			DescriptionEN: "Code for GitHub builds: up to six players and progress reports. Every option unlocks the same features.",
-			Price:         price, Project: 1, Product: 1, KeyID: 1,
-		})
-	}
-	return products
+	Delivery                                           EmailCopy
+	Gateway, Currency, VariantID                       string
 }
 
 type Order struct {
-	ID, ViewToken, Email          string
-	Product                       Product
-	Created                       time.Time
-	SnapToken, Code, State        string
-	Paid                          bool
-	EmailSent                     bool
-	EmailFirstAttempt, EmailLease time.Time
+	ID, ViewToken, Email                  string
+	Product                               Product
+	Created                               time.Time
+	SnapToken, Code, State                string
+	Paid                                  bool
+	EmailSent                             bool
+	CheckoutURL, PaymentProof, ProviderID string
+	EmailFirstAttempt, EmailLease         time.Time
 	// Revision is the store's compare-and-swap token, never part of the record.
 	Revision string `json:"-"`
 }
@@ -73,12 +61,43 @@ type Mailer interface {
 type Service struct {
 	Store      Store
 	Gateway    payment.Gateway
+	Gateways   map[string]payment.Gateway
 	Mailer     Mailer
 	Products   []Product
 	BaseURL    string
 	SigningKey func(uint16, uint8) (ed25519.PrivateKey, error)
 	Now        func() time.Time
 }
+
+// GatewayName and CurrencyCode preserve orders from the original IDR checkout.
+func (p Product) GatewayName() string {
+	if p.Gateway == "" {
+		return payment.Midtrans
+	}
+	return p.Gateway
+}
+func (p Product) CurrencyCode() string {
+	if p.Currency == "" {
+		return "IDR"
+	}
+	return p.Currency
+}
+func (p Product) FormattedPrice() string {
+	if p.CurrencyCode() == "USD" {
+		return fmt.Sprintf("US$ %d.%02d", p.Price/100, p.Price%100)
+	}
+	return fmt.Sprintf("Rp %d", p.Price)
+}
+func (s *Service) gateway(name string) payment.Gateway {
+	if g := s.Gateways[name]; g != nil {
+		return g
+	}
+	if name == payment.Midtrans {
+		return s.Gateway
+	}
+	return nil
+}
+func (s *Service) HasGateway(name string) bool { return s.gateway(name) != nil }
 
 func (s *Service) now() time.Time {
 	if s.Now != nil {
@@ -107,7 +126,8 @@ func (s *Service) Create(ctx context.Context, slug, email string) (Order, error)
 			break
 		}
 	}
-	if product.Price <= 0 {
+	gateway := s.gateway(product.GatewayName())
+	if product.Price <= 0 || gateway == nil {
 		return Order{}, ErrInput
 	}
 	// Validate the key before accepting a payment.
@@ -122,11 +142,18 @@ func (s *Service) Create(ctx context.Context, slug, email string) (Order, error)
 	if err != nil {
 		return Order{}, err
 	}
-	o := Order{ID: id, ViewToken: token, Email: email, Product: product, Created: s.now(), State: "pending"}
+	proof := ""
+	if product.GatewayName() == payment.LemonSqueezy {
+		proof, err = randomHex(32)
+		if err != nil {
+			return Order{}, err
+		}
+	}
+	o := Order{PaymentProof: proof, ID: id, ViewToken: token, Email: email, Product: product, Created: s.now(), State: "pending"}
 	if err := s.Store.Create(ctx, o); err != nil {
 		return Order{}, err
 	}
-	session, err := s.Gateway.Create(ctx, payment.Checkout{ID: id, Email: email, Name: product.NameEN, Amount: product.Price, FinishURL: s.BaseURL + o.Path()})
+	session, err := gateway.Create(ctx, payment.Checkout{Currency: product.CurrencyCode(), VariantID: product.VariantID, Proof: proof, ID: id, Email: email, Name: product.NameEN, Amount: product.Price, FinishURL: s.BaseURL + o.Path()})
 	if err != nil {
 		return Order{}, err
 	}
@@ -137,6 +164,7 @@ func (s *Service) Create(ctx context.Context, slug, email string) (Order, error)
 			return Order{}, err
 		}
 		current.SnapToken = session.Token
+		current.CheckoutURL = session.URL
 		err = s.Store.Save(ctx, current)
 		if errors.Is(err, ErrConflict) {
 			continue
@@ -163,7 +191,15 @@ func (s *Service) View(ctx context.Context, id, token string) (Order, error) {
 }
 
 func (s *Service) Notify(ctx context.Context, data []byte) error {
-	status, err := s.Gateway.Notification(ctx, data)
+	return s.NotifyGateway(ctx, payment.Midtrans, data, "")
+}
+
+func (s *Service) NotifyGateway(ctx context.Context, name string, data []byte, signature string) error {
+	gateway := s.gateway(name)
+	if gateway == nil {
+		return ErrNotFound
+	}
+	status, err := gateway.Notification(ctx, data, signature)
 	if err != nil {
 		return err
 	}
@@ -172,8 +208,18 @@ func (s *Service) Notify(ctx context.Context, data []byte) error {
 		if err != nil {
 			return err
 		}
-		if status.Amount != o.Product.Price {
+		currency := status.Currency
+		if currency == "" && name == payment.Midtrans {
+			currency = "IDR"
+		}
+		if name != o.Product.GatewayName() || currency != o.Product.CurrencyCode() || status.Amount != o.Product.Price {
 			return errors.New("shop: payment amount mismatch")
+		}
+		if name == payment.LemonSqueezy {
+			if len(o.PaymentProof) != 64 || subtle.ConstantTimeCompare([]byte(status.Proof), []byte(o.PaymentProof)) != 1 || status.VariantID != o.Product.VariantID || status.ProviderID == "" || (o.ProviderID != "" && o.ProviderID != status.ProviderID) {
+				return errors.New("shop: payment order mismatch")
+			}
+			o.ProviderID = status.ProviderID
 		}
 		if o.Paid {
 			return s.Deliver(ctx, o.ID)

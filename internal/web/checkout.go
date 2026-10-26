@@ -9,8 +9,9 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
-	"github.com/ardeman/project-dahlunas-go/internal/midtrans"
+	"github.com/ardeman/project-dahlunas-go/internal/payment"
 	"github.com/ardeman/project-dahlunas-go/internal/shop"
 )
 
@@ -34,8 +35,14 @@ func registerShop(mux *http.ServeMux, config Options) {
 		return
 	}
 	s := config.Shop
+	limiter := &checkoutLimiter{}
 	mux.HandleFunc("POST /checkout", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
+		if !limiter.allow(time.Now()) {
+			w.Header().Set("Retry-After", "2")
+			http.Error(w, "Terlalu banyak permintaan. Coba lagi nanti. / Too many requests. Try again shortly.", http.StatusTooManyRequests)
+			return
+		}
 		base, _ := url.Parse(s.BaseURL)
 		if origin := r.Header.Get("Origin"); origin != "" && origin != base.Scheme+"://"+base.Host {
 			http.Error(w, "Forbidden", 403)
@@ -54,6 +61,17 @@ func registerShop(mux *http.ServeMux, config Options) {
 		if r.PostForm.Get("accept") != "yes" {
 			http.Error(w, "Setujui ketentuan / Accept the terms", 400)
 			return
+		}
+		if config.BotVerifier != nil {
+			ok, err := config.BotVerifier.Verify(r.Context(), r.PostForm.Get("cf-turnstile-response"))
+			if err != nil {
+				http.Error(w, "Verifikasi belum tersedia. Coba lagi nanti. / Verification unavailable. Try again later.", http.StatusServiceUnavailable)
+				return
+			}
+			if !ok {
+				http.Error(w, "Muat ulang halaman dan ulangi verifikasi. / Reload the page and complete verification again.", http.StatusForbidden)
+				return
+			}
 		}
 		o, err := s.Create(r.Context(), r.PostForm.Get("product"), strings.TrimSpace(r.PostForm.Get("email")))
 		if errors.Is(err, shop.ErrInput) {
@@ -82,24 +100,33 @@ func registerShop(mux *http.ServeMux, config Options) {
 			Order shop.Order
 		}{config, o})
 	})
-	mux.HandleFunc("POST /webhooks/midtrans", func(w http.ResponseWriter, r *http.Request) {
-		r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
-		data, err := io.ReadAll(r.Body)
-		if err != nil {
-			http.Error(w, "Invalid notification", 400)
-			return
+	for _, gateway := range []string{payment.Midtrans, payment.LemonSqueezy} {
+		if !s.HasGateway(gateway) {
+			continue
 		}
-		err = s.Notify(r.Context(), data)
-		if errors.Is(err, midtrans.ErrSignature) {
-			http.Error(w, "Invalid signature", 401)
-			return
-		}
-		if err != nil {
-			http.Error(w, "Retry notification", 503)
-			return
-		}
-		w.Write([]byte("ok"))
-	})
+		mux.HandleFunc("POST /webhooks/"+gateway, func(w http.ResponseWriter, r *http.Request) {
+			r.Body = http.MaxBytesReader(w, r.Body, 64<<10)
+			data, err := io.ReadAll(r.Body)
+			if err != nil {
+				http.Error(w, "Invalid notification", 400)
+				return
+			}
+			err = s.NotifyGateway(r.Context(), gateway, data, r.Header.Get("X-Signature"))
+			if errors.Is(err, payment.ErrIgnored) {
+				w.WriteHeader(200)
+				return
+			}
+			if errors.Is(err, payment.ErrSignature) {
+				http.Error(w, "Invalid signature", 401)
+				return
+			}
+			if err != nil {
+				http.Error(w, "Retry notification", 503)
+				return
+			}
+			w.Write([]byte("ok"))
+		})
+	}
 }
 
 func withCheckoutForm(config Options) http.HandlerFunc {

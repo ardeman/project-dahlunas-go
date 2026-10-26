@@ -46,19 +46,24 @@ func (s *webStore) Save(_ context.Context, o shop.Order) error {
 }
 
 type webGateway struct {
-	checkout payment.Checkout
-	paid     bool
+	checkout  payment.Checkout
+	paid      bool
+	signature string
 }
 
 func (g *webGateway) Create(_ context.Context, c payment.Checkout) (payment.Session, error) {
 	g.checkout = c
+	if c.Currency == "USD" {
+		return payment.Session{URL: "https://shop.lemonsqueezy.com/checkout/custom/test"}, nil
+	}
 	return payment.Session{Token: "browser-token"}, nil
 }
-func (g *webGateway) Notification(_ context.Context, b []byte) (payment.Status, error) {
+func (g *webGateway) Notification(_ context.Context, b []byte, signature string) (payment.Status, error) {
+	g.signature = signature
 	if string(b) != "valid" {
 		return payment.Status{}, midtrans.ErrSignature
 	}
-	return payment.Status{ID: g.checkout.ID, Amount: g.checkout.Amount, State: "settlement", Paid: g.paid}, nil
+	return payment.Status{ID: g.checkout.ID, Amount: g.checkout.Amount, State: "settlement", Paid: g.paid, Currency: g.checkout.Currency, VariantID: g.checkout.VariantID, Proof: g.checkout.Proof, ProviderID: "56"}, nil
 }
 
 type webMail struct{ calls int }
@@ -152,5 +157,82 @@ func TestPoliciesAndDisabledCheckout(t *testing.T) {
 	h.ServeHTTP(w, httptest.NewRequest("POST", "/checkout", nil))
 	if w.Code != 404 {
 		t.Fatal(w.Code)
+	}
+}
+
+func TestProjectCopyOnPages(t *testing.T) {
+	product := shop.Product{Slug: "second", NameID: "Produk Kedua", NameEN: "Second product", DescriptionID: "Fitur kedua", DescriptionEN: "Second features", Price: 9000, Project: 2, Product: 7, KeyID: 3, Delivery: shop.EmailCopy{Instructions: shop.Text{ID: "Buka pengaturan", EN: "Open settings"}}}
+	o := shop.Order{ID: strings.Repeat("a", 32), ViewToken: strings.Repeat("b", 64), Product: product, Paid: true, Code: "DL1.example"}
+	store := &webStore{orders: map[string]shop.Order{o.ID: o}}
+	s := &shop.Service{Store: store, Products: []shop.Product{product}, BaseURL: "https://shop.example"}
+	h := Handler(Options{Shop: s})
+	for _, path := range []string{"/", "/terms", o.Path()} {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
+		if w.Code != 200 || strings.Contains(w.Body.String(), "Coba Lagi") {
+			t.Fatal(path, "wrong project copy")
+		}
+		want := "Second product"
+		if path == o.Path() {
+			want = "Open settings"
+		}
+		if !strings.Contains(w.Body.String(), want) {
+			t.Fatal(path, "missing project wording")
+		}
+	}
+}
+
+func TestInternationalCheckoutAndSignedWebhookRoute(t *testing.T) {
+	g, m := &webGateway{}, &webMail{}
+	p := shop.CobaLagi()[0]
+	p.Gateway = payment.LemonSqueezy
+	p.Currency = "USD"
+	p.Price = 599
+	p.VariantID = "34"
+	p.Slug = "international"
+	s := &shop.Service{Mailer: m, Store: &webStore{orders: map[string]shop.Order{}}, Gateways: map[string]payment.Gateway{payment.LemonSqueezy: g}, Products: []shop.Product{p}, BaseURL: "https://shop.example", SigningKey: func(uint16, uint8) (ed25519.PrivateKey, error) { return ed25519.NewKeyFromSeed(make([]byte, 32)), nil }}
+	h := Handler(Options{Shop: s})
+	home := httptest.NewRecorder()
+	h.ServeHTTP(home, httptest.NewRequest("GET", "/", nil))
+	if !strings.Contains(home.Body.String(), "US$ 5.99") || !strings.Contains(home.Body.String(), "Lemon Squeezy") {
+		t.Fatal("missing USD product")
+	}
+	cookie := home.Result().Cookies()[0]
+	values := url.Values{"csrf": {cookie.Value}, "accept": {"yes"}, "email": {"buyer@example.com"}, "product": {"international"}}
+	r := httptest.NewRequest("POST", "https://shop.example/checkout", strings.NewReader(values.Encode()))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.AddCookie(cookie)
+	w := httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code != 303 {
+		t.Fatal(w.Code, w.Body.String())
+	}
+	path := w.Header().Get("Location")
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest("GET", path+"?status=paid", nil))
+	if w.Code != 200 || !strings.Contains(w.Body.String(), "https://shop.lemonsqueezy.com/checkout/custom/test") || strings.Contains(w.Body.String(), "snap.js") || strings.Contains(w.Body.String(), "data-snap-token") || strings.Contains(w.Body.String(), g.checkout.Proof) || strings.Contains(w.Body.String(), "DL1.") {
+		t.Fatal("incorrect hosted checkout page")
+	}
+	// An invalid signature must not be retried as a delivery error.
+	r = httptest.NewRequest("POST", "/webhooks/lemonsqueezy", strings.NewReader("invalid"))
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, r)
+	if w.Code != 401 {
+		t.Fatal(w.Code)
+	}
+	g.paid = true
+	for i := 0; i < 2; i++ {
+		r = httptest.NewRequest("POST", "/webhooks/lemonsqueezy", strings.NewReader("valid"))
+		r.Header.Set("X-Signature", "signed-payload")
+		w = httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		if w.Code != 200 || g.signature != "signed-payload" {
+			t.Fatal("signature header not forwarded", w.Code)
+		}
+	}
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
+	if w.Code != 200 || !strings.Contains(w.Body.String(), "DL1.") || !strings.Contains(w.Body.String(), "US$ 5.99") || m.calls != 1 {
+		t.Fatal("international order not fulfilled once")
 	}
 }

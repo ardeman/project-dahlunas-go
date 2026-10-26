@@ -77,7 +77,7 @@ func TestNotificationUsesAuthoritativeStatus(t *testing.T) {
 			c := New("test-key", false)
 			c.statusURL = server.URL + "/"
 			// A valid signature on a forged successful body is insufficient.
-			s, err := c.Notification(context.Background(), signed(notification{ID: "order-1", Code: "200", Amount: "5000.00", State: "settlement", Fraud: "accept"}))
+			s, err := c.Notification(context.Background(), signed(notification{ID: "order-1", Code: "200", Amount: "5000.00", State: "settlement", Fraud: "accept"}), "")
 			if (err != nil) != tc.invalid || s.Paid != tc.paid {
 				t.Fatalf("status=%+v err=%v", s, err)
 			}
@@ -89,7 +89,7 @@ func TestBadSignatureDoesNotContactProvider(t *testing.T) {
 	c := New("test-key", false)
 	c.statusURL = "http://invalid.invalid/"
 	for _, data := range []string{`{`, `{}`, `{"order_id":"order-1","signature_key":"aa"}`} {
-		if _, err := c.Notification(context.Background(), []byte(data)); !errors.Is(err, ErrSignature) {
+		if _, err := c.Notification(context.Background(), []byte(data), ""); !errors.Is(err, ErrSignature) {
 			t.Fatalf("error=%v", err)
 		}
 	}

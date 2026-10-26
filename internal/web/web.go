@@ -2,6 +2,7 @@
 package web
 
 import (
+	"context"
 	"embed"
 	"html/template"
 	"io/fs"
@@ -20,6 +21,10 @@ var pages = template.Must(template.ParseFS(templates, "templates/*.html"))
 
 // Handler returns the routes of the service.
 type Options struct {
+	TurnstileSiteKey string
+	BotVerifier      interface {
+		Verify(context.Context, string) (bool, error)
+	}
 	Shop                        *shop.Service
 	ClientKey                   string
 	Production                  bool

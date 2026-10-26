@@ -19,7 +19,7 @@ import (
 	"github.com/ardeman/project-dahlunas-go/internal/payment"
 )
 
-var ErrSignature = errors.New("midtrans: invalid notification")
+var ErrSignature = payment.ErrSignature
 
 type Client struct {
 	key, snapURL, statusURL string
@@ -90,7 +90,7 @@ type notification struct {
 	Fraud     string `json:"fraud_status"`
 }
 
-func (c *Client) Notification(ctx context.Context, data []byte) (payment.Status, error) {
+func (c *Client) Notification(ctx context.Context, data []byte, _ string) (payment.Status, error) {
 	var n notification
 	if json.Unmarshal(data, &n) != nil || n.ID == "" || len(n.ID) > 50 || c.key == "" {
 		return payment.Status{}, ErrSignature
@@ -111,7 +111,7 @@ func (c *Client) Notification(ctx context.Context, data []byte) (payment.Status,
 		return payment.Status{}, errors.New("midtrans: invalid status")
 	}
 	paid := current.Code == "200" && ((current.State == "settlement" && (current.Fraud == "" || current.Fraud == "accept")) || (current.State == "capture" && current.Fraud == "accept"))
-	return payment.Status{ID: current.ID, Amount: amount, State: current.State, Paid: paid}, nil
+	return payment.Status{ID: current.ID, Amount: amount, State: current.State, Paid: paid, Currency: "IDR"}, nil
 }
 
 func rupiah(s string) (int64, error) {

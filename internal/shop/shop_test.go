@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"errors"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -62,7 +63,7 @@ func (g *gateway) Create(_ context.Context, c payment.Checkout) (payment.Session
 	g.checkout = c
 	return payment.Session{Token: "token"}, g.err
 }
-func (g *gateway) Notification(context.Context, []byte) (payment.Status, error) {
+func (g *gateway) Notification(context.Context, []byte, string) (payment.Status, error) {
 	return g.status, g.err
 }
 
@@ -234,5 +235,75 @@ func TestMissingSigningKeyPreventsCheckout(t *testing.T) {
 	}
 	if g.checkout.ID != "" {
 		t.Fatal("provider called without signing key")
+	}
+}
+
+func TestLemonSqueezyOrderBinding(t *testing.T) {
+	for _, name := range []string{"paid", "wrong gateway", "wrong currency", "wrong amount", "wrong proof", "wrong variant", "different provider order"} {
+		t.Run(name, func(t *testing.T) {
+			s, midtrans, m, _ := setup(t)
+			lemon := &gateway{}
+			s.Gateways = map[string]payment.Gateway{payment.LemonSqueezy: lemon}
+			product := CobaLagi()[0]
+			product.Slug = "international"
+			product.Gateway = payment.LemonSqueezy
+			product.Currency = "USD"
+			product.Price = 599
+			product.VariantID = "34"
+			s.Products = append(s.Products, product)
+			o, err := s.Create(context.Background(), product.Slug, "buyer@example.com")
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(o.PaymentProof) != 64 || lemon.checkout.Currency != "USD" || lemon.checkout.Amount != 599 || lemon.checkout.Proof != o.PaymentProof || lemon.checkout.VariantID != "34" {
+				t.Fatal("checkout not bound")
+			}
+			status := payment.Status{ID: o.ID, Amount: 599, Currency: "USD", Proof: o.PaymentProof, VariantID: "34", ProviderID: "56", State: "paid", Paid: true}
+			switch name {
+			case "wrong currency":
+				status.Currency = "IDR"
+			case "wrong amount":
+				status.Amount = 598
+			case "wrong proof":
+				status.Proof = strings.Repeat("0", 64)
+			case "wrong variant":
+				status.VariantID = "35"
+			case "different provider order":
+				saved, _ := s.Store.Get(context.Background(), o.ID)
+				saved.ProviderID = "57"
+				if err := s.Store.Save(context.Background(), saved); err != nil {
+					t.Fatal(err)
+				}
+			}
+			lemon.status = status
+			if name == "wrong gateway" {
+				midtrans.status = status
+				err = s.Notify(context.Background(), nil)
+			} else {
+				err = s.NotifyGateway(context.Background(), payment.LemonSqueezy, nil, "signature")
+			}
+			saved, _ := s.Store.Get(context.Background(), o.ID)
+			if name != "paid" {
+				if err == nil || saved.Paid || saved.Code != "" || m.calls != 0 {
+					t.Fatal("invalid payment fulfilled", err)
+				}
+				return
+			}
+			if err != nil || !saved.Paid || saved.ProviderID != "56" || m.calls != 1 {
+				t.Fatal("valid payment not fulfilled", err)
+			}
+			original := saved.Code
+			// Currency and variant remain tied to the order snapshot after catalog edits.
+			s.Products = CobaLagi()
+			for i := 0; i < 2; i++ {
+				if err := s.NotifyGateway(context.Background(), payment.LemonSqueezy, nil, "signature"); err != nil {
+					t.Fatal(err)
+				}
+			}
+			saved, _ = s.Store.Get(context.Background(), o.ID)
+			if m.calls != 1 || saved.Code != original {
+				t.Fatal("duplicate notification changed fulfillment")
+			}
+		})
 	}
 }

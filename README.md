@@ -41,25 +41,25 @@ Go (standard library first) with htmx pages, running on Cloud Run behind Firebas
 - `internal/unlock/` makes and checks unlock codes ([format](docs/code-format.md)) and reads signing keys: `DAHLUNAS_KEY_<project>_<key id>` holds the key's 32-byte Ed25519 seed in hex.
 - `internal/web/` holds routes, page templates (`templates/`) and static files (`static/`, htmx vendored at 2.0.4).
 - `internal/app/` validates environment configuration and assembles the service.
-- `internal/shop/` owns the Coba Lagi catalog, orders, fulfillment and delivery leases.
-- `internal/payment/` defines the gateway interface; `internal/midtrans/` implements Snap and verified notifications.
+- `internal/shop/` owns the validated project catalog, orders, fulfillment and delivery leases; its embedded default is `catalog/coba-lagi.json` ([project configuration](docs/projects.md)).
+- `internal/payment/` defines the gateway interface; `internal/midtrans/` implements Snap and verified notifications, and `internal/lemonsqueezy/` implements optional USD hosted checkout and signed notifications ([setup](docs/lemonsqueezy.md)).
 - `internal/orderstore/` persists orders in Firestore with conditional writes; `internal/delivery/` sends bilingual code emails through Resend.
 - `public/` is Firebase Hosting's folder; every request is rewritten to the Cloud Run service `dahlunas` in `asia-southeast2` (Jakarta).
 - `.github/workflows/checks.yml` runs the Checks command on pushes and pull requests.
 - `docs/code-format.md` specifies the shared offline unlock-code format for Dahlunas and the apps.
 
-The server serves a bilingual shop at `/`, policies at `/terms`, `/refunds` and `/privacy`, private order pages at `/orders/{id}/{token}`, Midtrans notifications at `/webhooks/midtrans`, and a health check at `/healthz`. With checkout disabled, the homepage says sales are not open.
+The server serves a bilingual shop at `/`, policies at `/terms`, `/refunds` and `/privacy`, private order pages at `/orders/{id}/{token}`, Midtrans notifications at `/webhooks/midtrans`, optional Lemon Squeezy notifications at `/webhooks/lemonsqueezy`, and a health check at `/healthz`. With checkout disabled, the homepage says sales are not open.
 
 ## Roadmap
 
 1. **Code format:** [version 1](docs/code-format.md) carries project, product, id and date, signed with Ed25519, in 148 characters for copy/paste or QR scanning. `internal/unlock` makes and checks it, tested against the documented fixture.
 2. **Minting:** `cmd/mint` makes a project's signing key (the seed goes to a file for Secret Manager, never to the screen) and codes by hand, for orders before the webhook exists.
 3. **Shop and Midtrans:** implemented for Coba Lagi with three rupiah support amounts, Snap's on-page popup, QRIS, policy pages, Firestore orders, signature/status verification, idempotent unlock codes and Resend email. [Setup and operation](docs/checkout.md). Remaining before sales: configure services and approved refund terms, provision Coba Lagi's public signing key, update its purchase privacy disclosure, and complete an end-to-end sandbox payment. The individual account ("Registrasi perorangan") was submitted on 2026-10-26; use sandbox until approved. Other payment methods and their minimum-price thresholds remain future work.
-4. **Projects:** per-project config (products, prices, key, email wording in Indonesian and English).
-5. **Worldwide:** Lemon Squeezy (merchant of record, accepts individuals, prices in dollars) as a second gateway behind the same interface; it handles foreign tax on its sales. Xendit can join once there is a company (it accepts only legal entities).
+4. **Projects:** implemented through a validated JSON catalog with per-project products, prices, signing key IDs, and Indonesian/English email wording. Orders retain their original delivery copy. [Configuration and rotation](docs/projects.md).
+5. **Worldwide:** Lemon Squeezy implemented as an optional USD gateway behind the shared payment interface, with hosted checkout, verified order notifications and idempotent code delivery. [Setup and test-mode verification](docs/lemonsqueezy.md) remain before sales; no USD products are enabled by default. Xendit can join once there is a company (it accepts only legal entities).
 6. **Ready for a rush** (traffic stays small, since apps check codes offline; these are what break first):
    - Complete Resend domain verification and monitor delivery; codes are already shown on the paid page.
-   - Rate-limit checkout and guard it against bots (Turnstile or App Check).
+   - Checkout has a per-instance rate limit and server-verified Turnstile protection; configure Turnstile before production (see checkout setup). Fleet-wide edge limits remain future work.
    - Monitor notification/delivery retries; one code per payment is enforced by conditional writes and a fixed code ID.
    - Card fraud and chargebacks: keep amounts small; codes checked offline can't be taken back.
    - Midtrans may ask for more documents as volume grows; taxes (NPWP; VAT abroad unless a merchant of record handles it).
