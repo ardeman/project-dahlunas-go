@@ -1,0 +1,80 @@
+name: Deploy
+
+# Docs, Hosting and CI files never reach the Cloud Run image; Checks covers
+# pushes that change only those.
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'public/**'
+      - '.github/**'
+      - LICENSE
+      - firebase.json
+      - .gitignore
+
+permissions:
+  contents: read
+
+env:
+  PROJECT: dah-lunas
+  REGION: asia-southeast2
+  # Not secrets: GitHub's short-lived token is exchanged through this provider,
+  # which only accepts this repository's main branch.
+  WORKLOAD_IDENTITY_PROVIDER: projects/94420495178/locations/global/workloadIdentityPools/github/providers/dahlunas-repo
+  DEPLOYER: dahlunas-deployer@dah-lunas.iam.gserviceaccount.com
+
+jobs:
+  checks:
+    uses: ./.github/workflows/checks.yml
+
+  deploy-development:
+    needs: checks
+    runs-on: ubuntu-latest
+    concurrency: deploy-development
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.DEPLOYER }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Deploy dahlunas-development
+        run: gcloud run deploy dahlunas-development --source . --region "$REGION" --project "$PROJECT" --quiet
+
+  # The production environment requires the owner's approval in GitHub. A newer
+  # push cancels an approval still waiting, so only the latest build is offered.
+  approve-production:
+    needs: deploy-development
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://dahlunas.ardeman.com
+    concurrency:
+      group: approve-production
+      cancel-in-progress: true
+    permissions: {}
+    steps:
+      - run: echo "Approved"
+
+  # Kept apart from the approval so a newer push never cancels a running deploy.
+  deploy-production:
+    needs: approve-production
+    runs-on: ubuntu-latest
+    concurrency: deploy-production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.DEPLOYER }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Deploy dahlunas
+        run: gcloud run deploy dahlunas --source . --region "$REGION" --project "$PROJECT" --quiet
