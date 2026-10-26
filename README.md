@@ -8,7 +8,7 @@ Go (standard library first) with htmx pages, running on Cloud Run behind Firebas
 
 - Go 1.24 or newer.
 - `gcloud` (Google Cloud SDK) to deploy; Docker isn't needed, since Cloud Run builds from source.
-- Firebase CLI (`npm i -g firebase-tools`) for the Hosting rewrite. Pick the Firebase project once with `firebase use --add`.
+- Firebase CLI (`npm i -g firebase-tools`) for the Hosting rewrite. `.firebaserc` already selects project `dah-lunas` and its two Hosting sites.
 - For local configuration, use the single `.env.example` template:
 
   ```sh
@@ -35,7 +35,7 @@ Go (standard library first) with htmx pages, running on Cloud Run behind Firebas
 | Mint a code by hand | `go run ./cmd/mint code -project 1 -product 1 -key 1` (reads `DAHLUNAS_KEY_1_1`) |
 | Deploy the services | Automatic: a push to `main` that passes the checks deploys `dahlunas-development`, then `dahlunas` after the owner approves the `production` environment in GitHub Actions; a newer push cancels an approval still waiting |
 | Deploy the service by hand | `gcloud run deploy dahlunas --source . --region asia-southeast2` |
-| Deploy Hosting | `firebase deploy --only hosting` |
+| Deploy Hosting | `firebase deploy --only hosting` (both sites), or `--only hosting:sandbox` / `hosting:production` |
 
 ## Layout
 
@@ -47,7 +47,7 @@ Go (standard library first) with htmx pages, running on Cloud Run behind Firebas
 - `internal/shop/` owns the validated project catalog, orders, fulfillment and delivery leases; its embedded default is `catalog/coba-lagi.json` ([project configuration](docs/projects.md)).
 - `internal/payment/` defines the gateway interface; `internal/midtrans/` implements Snap and verified notifications, and `internal/lemonsqueezy/` implements optional USD hosted checkout and signed notifications ([setup](docs/lemonsqueezy.md)).
 - `internal/orderstore/` persists orders in Firestore with conditional writes; `internal/delivery/` sends bilingual code emails through Resend.
-- `public/` is Firebase Hosting's folder; every request is rewritten to the Cloud Run service `dahlunas` in `asia-southeast2` (Jakarta).
+- `public/` is Firebase Hosting's folder. `firebase.json` has two sites in `asia-southeast2` (Jakarta): target `production` (site `dah-lunas`, custom domain `dahlunas.ardeman.com`) rewrites every request to the Cloud Run service `dahlunas`, and target `sandbox` (site `dah-lunas-sandbox`, https://dah-lunas-sandbox.web.app) to `dahlunas-development`.
 - `.github/workflows/checks.yml` runs the Checks command on pushes and pull requests, then deploys both Cloud Run services from `main` unless a push changes only docs, Markdown, `public/`, `firebase.json` or CI files.
 - `docs/code-format.md` specifies the shared offline unlock-code format for Dahlunas and the apps.
 

@@ -101,6 +101,9 @@ func TestBrowserCheckoutThroughPaidPage(t *testing.T) {
 		t.Fatal("checkout form must keep its Origin header", home.Header().Get("Referrer-Policy"))
 	}
 	cookie := home.Result().Cookies()[0]
+	if cookie.Name != "__session" {
+		t.Fatal("Firebase Hosting forwards only the __session cookie", cookie.Name)
+	}
 	values := url.Values{"csrf": {cookie.Value}, "accept": {"yes"}, "email": {"buyer@example.com"}, "product": {"coba-lagi-1"}, "amount": {"1"}}
 	post := func(origin, csrf, accept string) *httptest.ResponseRecorder {
 		values.Set("csrf", csrf)

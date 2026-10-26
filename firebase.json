@@ -1,15 +1,32 @@
 {
-  "hosting": {
-    "public": "public",
-    "ignore": ["firebase.json", "**/.*"],
-    "rewrites": [
-      {
-        "source": "**",
-        "run": {
-          "serviceId": "dahlunas",
-          "region": "asia-southeast2"
+  "hosting": [
+    {
+      "target": "production",
+      "public": "public",
+      "ignore": ["firebase.json", "**/.*"],
+      "rewrites": [
+        {
+          "source": "**",
+          "run": {
+            "serviceId": "dahlunas",
+            "region": "asia-southeast2"
+          }
         }
-      }
-    ]
-  }
+      ]
+    },
+    {
+      "target": "sandbox",
+      "public": "public",
+      "ignore": ["firebase.json", "**/.*"],
+      "rewrites": [
+        {
+          "source": "**",
+          "run": {
+            "serviceId": "dahlunas-development",
+            "region": "asia-southeast2"
+          }
+        }
+      ]
+    }
+  ]
 }

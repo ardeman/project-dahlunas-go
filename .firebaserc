@@ -1,0 +1,13 @@
+{
+  "projects": {
+    "default": "dah-lunas"
+  },
+  "targets": {
+    "dah-lunas": {
+      "hosting": {
+        "production": ["dah-lunas"],
+        "sandbox": ["dah-lunas-sandbox"]
+      }
+    }
+  }
+}

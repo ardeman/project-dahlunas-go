@@ -32,6 +32,8 @@ A change is done only when the **Checks** command in `README.md` passes. If you 
 
 Record architectural choices here as one line each: date, decision, reason.
 
+- 2026-10-26: The sandbox gets its own Hosting site, `dah-lunas-sandbox.web.app`, rewriting to `dahlunas-development` in the same Firebase project; a memorable address, and sandbox tests now pass through Hosting like production. The checkout CSRF cookie is named `__session`, the only cookie Hosting forwards. Separate Firebase projects per environment can wait until others get dev access.
+
 - 2026-10-26: Pages show one language at a time, chosen by `?lang=` carried on internal links, else `Accept-Language`, else Indonesian; Firebase Hosting forwards no cookie but `__session` to Cloud Run, so a language cookie would never arrive. Emails stay bilingual.
 
 - 2026-10-26: GitHub Actions deploys both Cloud Run services after the checks pass on `main`, development automatically and production after the owner's approval in a GitHub environment, signing in through Workload Identity Federation as a narrow deployer account; a manual deploy was forgotten once, and no long-lived Google key may sit in GitHub. Pushes that change only docs, Hosting or CI files skip both deploys. The approval is its own job, which a newer push cancels while it waits, so only the latest build is offered; the deploy job after it never cancels. Firebase Hosting stays a manual deploy, since its rewrite rarely changes.

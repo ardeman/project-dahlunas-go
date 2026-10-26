@@ -68,7 +68,7 @@ func registerShop(mux *http.ServeMux, config Options) {
 			fail(w, p, "Formulir tidak valid.", "Invalid form.", 400)
 			return
 		}
-		cookie, err := r.Cookie("checkout_csrf")
+		cookie, err := r.Cookie(csrfCookie)
 		if err != nil || len(cookie.Value) != 64 || subtle.ConstantTimeCompare([]byte(cookie.Value), []byte(r.PostForm.Get("csrf"))) != 1 {
 			fail(w, p, "Muat ulang halaman.", "Reload the page.", 403)
 			return
@@ -146,6 +146,10 @@ func registerShop(mux *http.ServeMux, config Options) {
 	}
 }
 
+// csrfCookie is __session because Firebase Hosting strips every other cookie
+// before a request reaches Cloud Run.
+const csrfCookie = "__session"
+
 func withCheckoutForm(config Options) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		b := make([]byte, 32)
@@ -154,7 +158,7 @@ func withCheckoutForm(config Options) http.HandlerFunc {
 			return
 		}
 		token := hex.EncodeToString(b)
-		http.SetCookie(w, &http.Cookie{Name: "checkout_csrf", Value: token, Path: "/", HttpOnly: true, Secure: strings.HasPrefix(config.Shop.BaseURL, "https://"), SameSite: http.SameSiteStrictMode, MaxAge: 3600})
+		http.SetCookie(w, &http.Cookie{Name: csrfCookie, Value: token, Path: "/", HttpOnly: true, Secure: strings.HasPrefix(config.Shop.BaseURL, "https://"), SameSite: http.SameSiteStrictMode, MaxAge: 3600})
 		w.Header().Set("Cache-Control", "no-store")
 		p := newPage(r, config)
 		render(w, p, "home.html", struct {
