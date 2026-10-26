@@ -19,6 +19,7 @@ Go (standard library first) with htmx pages, running on Cloud Run behind Firebas
   Fill each local file with the matching Midtrans credentials. Keep `MIDTRANS_PRODUCTION=false` in `.env.development`; set it to `true` in `.env.production`. Use separate signing keys for sandbox codes and production codes. Both local files are ignored by Git and excluded from build uploads. On Cloud Run, configure secrets through Secret Manager.
   Keep `SHOP_PRODUCTION` equal to `MIDTRANS_PRODUCTION` in each file. Both environments use project `dah-lunas`, with separate order collections and Cloud Run services. The example includes the verified sender `receipts@dahlunas.ardeman.com`; both environments share one sending-only Resend key, secret `resend-api-key-development`. Production needs its actual public HTTPS base URL. Leave checkout disabled until setup is complete.
 - Select an environment with one of the commands below. Each runs in a subshell, so switching does not leave credentials in your current shell. The server does not load environment files automatically. You can also copy the template to `.env` and load it using the same command pattern.
+- GitHub Actions signs in to Google Cloud through Workload Identity Federation (pool `github`, provider `dahlunas-repo`, accepting only this repository's `main` branch) as `dahlunas-deployer`, which may deploy from source and act as the two runtime accounts; no key is stored in GitHub. The repository's `production` environment lists the owner as required reviewer.
 - Production uses real money, including test purchases. Checkout is disabled by default (`SHOP_ENABLED=false`). Follow [checkout setup](docs/checkout.md) for Midtrans, Firestore, Resend, signing keys and refund terms before enabling it.
 
 ## Commands
@@ -32,7 +33,8 @@ Go (standard library first) with htmx pages, running on Cloud Run behind Firebas
 | Checks | `test -z "$(gofmt -l .)" && go vet ./... && go test ./...` |
 | Make a signing key | `go run ./cmd/mint new-key -project 1 -key 1` (writes the seed to a `.key` file, prints the public key) |
 | Mint a code by hand | `go run ./cmd/mint code -project 1 -product 1 -key 1` (reads `DAHLUNAS_KEY_1_1`) |
-| Deploy the service | `gcloud run deploy dahlunas --source . --region asia-southeast2` |
+| Deploy the services | Automatic: a push to `main` that passes the checks deploys `dahlunas-development`, then `dahlunas` after the owner approves the `production` environment in GitHub Actions |
+| Deploy the service by hand | `gcloud run deploy dahlunas --source . --region asia-southeast2` |
 | Deploy Hosting | `firebase deploy --only hosting` |
 
 ## Layout

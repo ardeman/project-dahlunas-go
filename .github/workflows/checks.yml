@@ -5,6 +5,14 @@ on: [push, pull_request]
 permissions:
   contents: read
 
+env:
+  PROJECT: dah-lunas
+  REGION: asia-southeast2
+  # Not secrets: GitHub's short-lived token is exchanged through this provider,
+  # which only accepts this repository's main branch.
+  WORKLOAD_IDENTITY_PROVIDER: projects/94420495178/locations/global/workloadIdentityPools/github/providers/dahlunas-repo
+  DEPLOYER: dahlunas-deployer@dah-lunas.iam.gserviceaccount.com
+
 jobs:
   checks:
     runs-on: ubuntu-latest
@@ -16,3 +24,42 @@ jobs:
           cache: false
       - name: Check formatting, vet, and tests
         run: test -z "$(gofmt -l .)" && go vet ./... && go test ./...
+
+  deploy-development:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: checks
+    runs-on: ubuntu-latest
+    concurrency: deploy-development
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.DEPLOYER }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Deploy dahlunas-development
+        run: gcloud run deploy dahlunas-development --source . --region "$REGION" --project "$PROJECT" --quiet
+
+  deploy-production:
+    needs: deploy-development
+    runs-on: ubuntu-latest
+    # The production environment requires the owner's approval in GitHub.
+    environment:
+      name: production
+      url: https://dahlunas.ardeman.com
+    concurrency: deploy-production
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ env.DEPLOYER }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Deploy dahlunas
+        run: gcloud run deploy dahlunas --source . --region "$REGION" --project "$PROJECT" --quiet
