@@ -95,7 +95,7 @@ func TestCustomCatalogValidatesEachProjectKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	second := projects[0]
-	second.ID, second.KeyID = 2, 3
+	second.ID, second.KeyID, second.Slug = 2, 3, "second"
 	for i := range second.Products {
 		second.Products[i].Slug = "second-" + second.Products[i].Slug
 	}
@@ -118,7 +118,7 @@ func TestCustomCatalogValidatesEachProjectKey(t *testing.T) {
 		t.Fatal(err)
 	}
 	w := httptest.NewRecorder()
-	h.ServeHTTP(w, httptest.NewRequest("GET", "/", nil))
+	h.ServeHTTP(w, httptest.NewRequest("GET", "/projects/second", nil))
 	if w.Code != 200 || !strings.Contains(w.Body.String(), "second-coba-lagi-1") {
 		t.Fatal("custom catalog not rendered")
 	}

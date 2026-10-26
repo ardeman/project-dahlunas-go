@@ -53,7 +53,27 @@ func Handler(options ...Options) http.Handler {
 	})
 
 	if config.Shop != nil {
-		mux.HandleFunc("GET /{$}", withCheckoutForm(config))
+		// A shop with one project opens on that project's page.
+		mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
+			groups := config.Shop.Groups()
+			if len(groups) == 1 {
+				checkoutForm(w, r, config, groups[0])
+				return
+			}
+			p := newPage(r, config)
+			render(w, p, "home.html", struct {
+				page
+				Groups []shop.Group
+			}{p, groups})
+		})
+		mux.HandleFunc("GET /projects/{slug}", func(w http.ResponseWriter, r *http.Request) {
+			g, ok := config.Shop.Group(r.PathValue("slug"))
+			if !ok {
+				fail(w, newPage(r, config), "Halaman tidak ditemukan.", "Page not found.", http.StatusNotFound)
+				return
+			}
+			checkoutForm(w, r, config, g)
+		})
 	} else {
 		mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
 			p := newPage(r, config)

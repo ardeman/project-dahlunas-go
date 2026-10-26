@@ -150,20 +150,20 @@ func registerShop(mux *http.ServeMux, config Options) {
 // before a request reaches Cloud Run.
 const csrfCookie = "__session"
 
-func withCheckoutForm(config Options) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		b := make([]byte, 32)
-		if _, err := rand.Read(b); err != nil {
-			http.Error(w, "Unavailable", 503)
-			return
-		}
-		token := hex.EncodeToString(b)
-		http.SetCookie(w, &http.Cookie{Name: csrfCookie, Value: token, Path: "/", HttpOnly: true, Secure: strings.HasPrefix(config.Shop.BaseURL, "https://"), SameSite: http.SameSiteStrictMode, MaxAge: 3600})
-		w.Header().Set("Cache-Control", "no-store")
-		p := newPage(r, config)
-		render(w, p, "home.html", struct {
-			page
-			CSRF string
-		}{p, token})
+func checkoutForm(w http.ResponseWriter, r *http.Request, config Options, g shop.Group) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		http.Error(w, "Unavailable", 503)
+		return
 	}
+	token := hex.EncodeToString(b)
+	http.SetCookie(w, &http.Cookie{Name: csrfCookie, Value: token, Path: "/", HttpOnly: true, Secure: strings.HasPrefix(config.Shop.BaseURL, "https://"), SameSite: http.SameSiteStrictMode, MaxAge: 3600})
+	w.Header().Set("Cache-Control", "no-store")
+	p := newPage(r, config)
+	render(w, p, "project.html", struct {
+		page
+		CSRF    string
+		Group   shop.Group
+		Listing bool
+	}{p, token, g, len(config.Shop.Groups()) > 1})
 }

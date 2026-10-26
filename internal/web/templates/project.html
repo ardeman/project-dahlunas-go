@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="{{.Lang}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  {{$g := .Group}}{{$p := index $g.Products 0}}<title>{{if not .Production}}Sandbox · {{end}}{{if $g.Name.ID}}{{.T $g.Name.ID $g.Name.EN}}{{else}}{{.T $p.NameID $p.NameEN}}{{end}} · Dahlunas</title>
+  <link rel="stylesheet" href="/static/shop.css">
+  <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <script src="/static/htmx.min.js" defer></script>
+  {{if .TurnstileSiteKey}}<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>{{end}}
+</head>
+<body>
+  {{template "header" .}}
+  <main>
+  {{if .Listing}}<p class="back"><a href="{{.Href "/"}}">← {{.T "Semua proyek" "All projects"}}</a></p>{{end}}
+  <div class="project">
+    <h1>{{if $g.Icon}}<img class="icon" src="/static/products/{{$g.Icon}}" alt="" width="72" height="72">{{end}}<span>{{if $g.Name.ID}}{{.T $g.Name.ID $g.Name.EN}}{{else}}{{.T $p.NameID $p.NameEN}}{{end}}{{if $g.Tagline.ID}}<small class="tagline">{{.T $g.Tagline.ID $g.Tagline.EN}}</small>{{end}}</span></h1>
+    {{if $g.Image.ID}}<img class="shot" src="/static/products/{{.T $g.Image.ID $g.Image.EN}}" alt="{{.T "Tangkapan layar" "Screenshot"}} {{.T $g.Name.ID $g.Name.EN}}">{{end}}
+    {{if $g.Description.ID}}<p class="about">{{.T $g.Description.ID $g.Description.EN}}</p>{{end}}
+  </div>
+  <section aria-labelledby="product-title">
+    <h2 id="product-title">{{if $g.Amounts}}{{.T "Pilih jumlah" "Choose an amount"}}{{else}}{{.T "Pilih produk" "Choose a product"}}{{end}}</h2>
+    <form method="post" action="{{.Href "/checkout"}}">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      {{if $g.Amounts}}
+      <fieldset><legend>{{.T "Jumlah" "Amount"}}</legend>
+      <div class="amounts">
+        {{range $g.Products}}<label class="amount"><input type="radio" name="product" value="{{.Slug}}" {{if eq .Slug $p.Slug}}checked{{end}} required><span>{{.FormattedPrice}}</span></label>{{end}}
+      </div>
+      <p class="muted">{{template "via" (print $.Lang " " $p.GatewayName)}}</p>
+      </fieldset>
+      {{else}}
+      <fieldset><legend>{{.T "Produk" "Product"}}</legend>
+      <div class="choices">
+        {{range $g.Products}}
+        <label class="choice"><input type="radio" name="product" value="{{.Slug}}" {{if eq .Slug $p.Slug}}checked{{end}} required>{{if .Image.ID}}<img class="thumb" src="/static/products/{{$.T .Image.ID .Image.EN}}" alt="" loading="lazy">{{end}}<span class="item"><strong>{{$.T .NameID .NameEN}}</strong> <span class="price">{{.FormattedPrice}}</span><span class="detail">{{if not $g.Description.ID}}{{$.T .DescriptionID .DescriptionEN}} {{end}}<small>{{template "via" (print $.Lang " " .GatewayName)}}</small></span></span></label>
+        {{end}}
+      </div>
+      </fieldset>
+      {{end}}
+      <label for="email">{{.T "Email untuk menerima kode" "Email for your code"}}</label>
+      <input type="email" id="email" name="email" autocomplete="email" maxlength="254" required placeholder="{{.T "nama@example.com" "name@example.com"}}">
+      <label class="consent"><input type="checkbox" name="accept" value="yes" required><span>{{if .EN}}I agree to the <a href="{{.Href "/terms"}}">terms</a>, <a href="{{.Href "/refunds"}}">refund policy</a>, and <a href="{{.Href "/privacy"}}">privacy policy</a>.{{else}}Saya menyetujui <a href="{{.Href "/terms"}}">ketentuan</a>, <a href="{{.Href "/refunds"}}">kebijakan pengembalian dana</a>, dan <a href="{{.Href "/privacy"}}">privasi</a>.{{end}}</span></label>
+      {{if .TurnstileSiteKey}}<div class="cf-turnstile" data-sitekey="{{.TurnstileSiteKey}}" data-action="checkout" data-language="{{.Lang}}"></div><noscript><p>{{.T "Aktifkan JavaScript untuk verifikasi pembayaran." "Enable JavaScript for checkout verification."}}</p></noscript>{{end}}
+      <button type="submit">{{.T "Lanjut ke pembayaran" "Continue to payment"}}</button>
+      <p class="muted">{{.T "Kode muncul di halaman pesanan setelah pembayaran dikonfirmasi, lalu dikirim ke email Anda." "Your code appears on the order page once payment is confirmed, and is emailed to you."}}</p>
+    </form>
+  </section>
+  </main>
+  {{template "footer" .}}
+</body>
+</html>

@@ -32,8 +32,11 @@ type Product struct {
 	KeyID                                              uint8
 	Delivery                                           EmailCopy
 	Gateway, Currency, VariantID                       string
-	// ProjectName, Icon and the images only illustrate the shop's product list.
+	// ProjectSlug, ProjectName, Tagline, Icon and the images only present the
+	// product in the shop.
+	ProjectSlug         string
 	ProjectName         Text
+	Tagline             Text
 	Icon                string
 	ProjectImage, Image Text
 	// Activation lets a code be activated on one device at a time.
@@ -129,12 +132,28 @@ func thousands(n int64) string {
 
 // Group lists one project's products, in catalog order.
 type Group struct {
-	Name  Text
-	Icon  string
-	Image Text
+	Slug    string
+	Name    Text
+	Tagline Text
+	Icon    string
+	Image   Text
 	// Description is set when every product shares it, so it shows once.
 	Description Text
-	Products    []Product
+	// Amounts is set when the products differ only in price, so the shop
+	// offers them as a choice of amount.
+	Amounts  bool
+	Products []Product
+}
+
+// From is the lowest price, for "from Rp 5.000" on the project's card.
+func (g Group) From() Product {
+	low := g.Products[0]
+	for _, p := range g.Products[1:] {
+		if p.CurrencyCode() == low.CurrencyCode() && p.Price < low.Price {
+			low = p
+		}
+	}
+	return low
 }
 
 // Groups splits products by project, keeping catalog order.
@@ -146,15 +165,42 @@ func Groups(products []Product) []Group {
 		if !ok {
 			i = len(groups)
 			index[p.Project] = i
-			groups = append(groups, Group{Name: p.ProjectName, Icon: p.Icon, Image: p.ProjectImage, Description: Text{p.DescriptionID, p.DescriptionEN}})
+			slug := p.ProjectSlug
+			if slug == "" {
+				slug = strconv.Itoa(int(p.Project))
+			}
+			groups = append(groups, Group{Slug: slug, Name: p.ProjectName, Tagline: p.Tagline, Icon: p.Icon, Image: p.ProjectImage, Description: Text{p.DescriptionID, p.DescriptionEN}, Amounts: true})
 		}
 		g := &groups[i]
 		if g.Description != (Text{p.DescriptionID, p.DescriptionEN}) {
 			g.Description = Text{}
 		}
+		if len(g.Products) > 0 {
+			first := g.Products[0]
+			if first.NameID != p.NameID || first.NameEN != p.NameEN || first.GatewayName() != p.GatewayName() || first.CurrencyCode() != p.CurrencyCode() || p.Image != (Text{}) {
+				g.Amounts = false
+			}
+		} else if p.Image != (Text{}) {
+			g.Amounts = false
+		}
 		g.Products = append(g.Products, p)
 	}
+	for i := range groups {
+		if groups[i].Description == (Text{}) {
+			groups[i].Amounts = false
+		}
+	}
 	return groups
+}
+
+// Group finds a project's products by its slug.
+func (s *Service) Group(slug string) (Group, bool) {
+	for _, g := range s.Groups() {
+		if g.Slug == slug {
+			return g, true
+		}
+	}
+	return Group{}, false
 }
 func (s *Service) gateway(name string) payment.Gateway {
 	if g := s.Gateways[name]; g != nil {

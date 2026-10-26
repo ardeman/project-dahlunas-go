@@ -2,9 +2,14 @@
   {
     "id": 1,
     "key_id": 1,
+    "slug": "coba-lagi",
     "name": {
       "id": "Coba Lagi",
       "en": "Coba Lagi"
+    },
+    "tagline": {
+      "id": "Petualangan coding untuk anak",
+      "en": "A coding adventure for kids"
     },
     "icon": "coba-lagi-icon.png",
     "image": {

@@ -5,6 +5,7 @@ import (
 	"crypto/ed25519"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -258,5 +259,35 @@ func TestInternationalCheckoutAndSignedWebhookRoute(t *testing.T) {
 	h.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
 	if w.Code != 200 || !strings.Contains(w.Body.String(), "DL1.") || !strings.Contains(w.Body.String(), "US$ 5.99") || m.calls != 1 {
 		t.Fatal("international order not fulfilled once")
+	}
+}
+
+func TestProjectCardsLeadToAmountChoice(t *testing.T) {
+	f, err := os.Open("../../config/catalog-sandbox.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer f.Close()
+	products, err := shop.ParseCatalog(f)
+	if err != nil {
+		t.Fatal(err)
+	}
+	h := Handler(Options{Shop: &shop.Service{Products: products, BaseURL: "https://shop.example"}})
+	get := func(path string) *httptest.ResponseRecorder {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
+		return w
+	}
+	home := get("/?lang=en").Body.String()
+	if !strings.Contains(home, `href="/projects/coba-lagi?lang=en"`) || !strings.Contains(home, `href="/projects/bedug?lang=en"`) || strings.Count(home, "From Rp 5.000") != 2 || strings.Contains(home, `name="product"`) {
+		t.Fatal(home)
+	}
+	page := get("/projects/bedug?lang=en")
+	body := page.Body.String()
+	if page.Code != 200 || strings.Count(body, `class="amount"`) != 3 || strings.Count(body, "QRIS via Midtrans") != 1 || strings.Contains(body, "Coba Lagi") || !strings.Contains(body, "All projects") || page.Header().Get("Set-Cookie") == "" {
+		t.Fatal(page.Code, body)
+	}
+	if w := get("/projects/missing"); w.Code != 404 {
+		t.Fatal("unknown project", w.Code)
 	}
 }

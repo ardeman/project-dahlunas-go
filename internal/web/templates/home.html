@@ -7,38 +7,22 @@
   <link rel="stylesheet" href="/static/shop.css">
   <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
-  <script src="/static/htmx.min.js" defer></script>
-  {{if .TurnstileSiteKey}}<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>{{end}}
 </head>
 <body>
   {{template "header" .}}
   <main>
   <h1>{{.T "Bayar sekali, dapatkan kode." "Pay once, get your code."}}</h1>
   {{if .Shop}}
-  <section aria-labelledby="product-title">
-    <h2 id="product-title">{{.T "Pilih produk" "Choose a product"}}</h2>
-    <form method="post" action="{{.Href "/checkout"}}">
-      <input type="hidden" name="csrf" value="{{.CSRF}}">
-      <fieldset><legend>{{.T "Produk" "Product"}}</legend>
-      {{$first := (index .Shop.Products 0).Slug}}
-      {{range $group := .Shop.Groups}}
-      <div class="project">
-        {{if or .Name.ID .Icon}}<h3>{{if .Icon}}<img class="icon" src="/static/products/{{.Icon}}" alt="" width="48" height="48">{{end}}{{if .Name.ID}}{{$.T .Name.ID .Name.EN}}{{end}}</h3>{{end}}
-        {{if .Image.ID}}<img class="shot" src="/static/products/{{$.T .Image.ID .Image.EN}}" alt="{{$.T "Tangkapan layar" "Screenshot"}} {{$.T .Name.ID .Name.EN}}" loading="lazy">{{end}}
-        {{if .Description.ID}}<p class="about">{{$.T .Description.ID .Description.EN}}</p>{{end}}
-        <div class="choices">
-        {{range .Products}}
-        <label class="choice"><input type="radio" name="product" value="{{.Slug}}" {{if eq .Slug $first}}checked{{end}} required>{{if .Image.ID}}<img class="thumb" src="/static/products/{{$.T .Image.ID .Image.EN}}" alt="" loading="lazy">{{end}}<span class="item"><strong>{{$.T .NameID .NameEN}}</strong> <span class="price">{{.FormattedPrice}}</span><span class="detail">{{if not $group.Description.ID}}{{$.T .DescriptionID .DescriptionEN}} {{end}}<small>{{if eq .GatewayName "lemonsqueezy"}}{{$.T "Lemon Squeezy (USD), belum termasuk pajak" "Lemon Squeezy (USD), plus applicable tax"}}{{else}}{{$.T "QRIS lewat Midtrans" "QRIS via Midtrans"}}{{end}}</small></span></span></label>
-        {{end}}</div>
-      </div>
-      {{end}}</fieldset>
-      <label for="email">{{.T "Email untuk menerima kode" "Email for your code"}}</label>
-      <input type="email" id="email" name="email" autocomplete="email" maxlength="254" required placeholder="{{.T "nama@example.com" "name@example.com"}}">
-      <label class="consent"><input type="checkbox" name="accept" value="yes" required><span>{{if .EN}}I agree to the <a href="{{.Href "/terms"}}">terms</a>, <a href="{{.Href "/refunds"}}">refund policy</a>, and <a href="{{.Href "/privacy"}}">privacy policy</a>.{{else}}Saya menyetujui <a href="{{.Href "/terms"}}">ketentuan</a>, <a href="{{.Href "/refunds"}}">kebijakan pengembalian dana</a>, dan <a href="{{.Href "/privacy"}}">privasi</a>.{{end}}</span></label>
-      {{if .TurnstileSiteKey}}<div class="cf-turnstile" data-sitekey="{{.TurnstileSiteKey}}" data-action="checkout" data-language="{{.Lang}}"></div><noscript><p>{{.T "Aktifkan JavaScript untuk verifikasi pembayaran." "Enable JavaScript for checkout verification."}}</p></noscript>{{end}}
-      <button type="submit">{{.T "Lanjut ke pembayaran" "Continue to payment"}}</button>
-      <p class="muted">{{.T "Kode muncul di halaman pesanan setelah pembayaran dikonfirmasi, lalu dikirim ke email Anda." "Your code appears on the order page once payment is confirmed, and is emailed to you."}}</p>
-    </form>
+  <section aria-labelledby="projects-title">
+    <h2 id="projects-title">{{.T "Pilih proyek" "Choose a project"}}</h2>
+    <ul class="cards">
+    {{range .Groups}}{{$p := index .Products 0}}
+      <li><a class="card" href="{{$.Href (print "/projects/" .Slug)}}">
+        {{if .Image.ID}}<img class="shot" src="/static/products/{{$.T .Image.ID .Image.EN}}" alt="" loading="lazy">{{end}}
+        <span class="card-row">{{if .Icon}}<img class="icon" src="/static/products/{{.Icon}}" alt="" width="56" height="56">{{end}}<span class="card-text"><strong>{{if .Name.ID}}{{$.T .Name.ID .Name.EN}}{{else}}{{$.T $p.NameID $p.NameEN}}{{end}}</strong>{{if .Tagline.ID}}<span class="tagline">{{$.T .Tagline.ID .Tagline.EN}}</span>{{end}}<span class="from">{{if gt (len .Products) 1}}{{$.T "Mulai" "From"}} {{end}}{{.From.FormattedPrice}}</span></span><span class="go" aria-hidden="true">→</span></span>
+      </a></li>
+    {{end}}
+    </ul>
   </section>
   {{else}}<p class="closed">{{.T "Belum menerima pembayaran." "Checkout is not open yet."}}</p>{{end}}
   </main>

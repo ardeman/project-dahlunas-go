@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -72,7 +73,7 @@ func TestProjectOrderKeepsCatalogSnapshot(t *testing.T) {
 	var projects []ProjectConfig
 	json.Unmarshal(defaultCatalog, &projects)
 	second := projects[0]
-	second.ID, second.KeyID = 2, 3
+	second.ID, second.KeyID, second.Slug = 2, 3, "second"
 	second.Email.Subject = Text{ID: "Kode proyek kedua", EN: "Second project code"}
 	second.Email.Instructions = Text{ID: "Buka pengaturan", EN: "Open settings"}
 	second.Products = []ProductConfig{{Slug: "second-project", ID: 7, Price: 9000, Name: Text{ID: "Kedua", EN: "Second"}, Description: Text{ID: "Fitur kedua", EN: "Second features"}}}
@@ -168,6 +169,36 @@ func TestGroupsShowSharedDescriptionOnce(t *testing.T) {
 	products[1].DescriptionEN = "Different"
 	if g := Groups(products); g[0].Description != (Text{}) {
 		t.Fatal("kept a description the products do not share", g[0].Description)
+	}
+}
+
+func TestGroupsOfferAmountsOnlyForPriceTiers(t *testing.T) {
+	products := CobaLagi()
+	g := Groups(products)[0]
+	if !g.Amounts || g.Slug != "coba-lagi" || g.From().Price != 5000 {
+		t.Fatal(g.Amounts, g.Slug, g.From().Price)
+	}
+	products[2].NameEN = "Coba Lagi patron"
+	if Groups(products)[0].Amounts {
+		t.Fatal("offered differently named products as amounts")
+	}
+	if g := Groups([]Product{{Slug: "a", Project: 7, DescriptionID: "x", DescriptionEN: "x"}}); g[0].Slug != "7" {
+		t.Fatal("slug should default to the project ID", g[0].Slug)
+	}
+}
+
+func TestCatalogProjectSlugs(t *testing.T) {
+	project := func(id int, slug string) string {
+		return fmt.Sprintf(`{"id":%d,"key_id":1,"slug":%q,"tagline":{"id":"Satu","en":"One"},"email":{"subject":{"id":"s","en":"s"},"thank_you":{"id":"t","en":"t"},"instructions":{"id":"i","en":"i"}},"products":[{"slug":"p%d","id":1,"price":5000,"name":{"id":"n","en":"n"},"description":{"id":"d","en":"d"}}]}`, id, slug, id)
+	}
+	products, err := ParseCatalog(strings.NewReader("[" + project(1, "") + "," + project(2, "bedug") + "]"))
+	if err != nil || products[0].ProjectSlug != "1" || products[1].ProjectSlug != "bedug" || products[1].Tagline.EN != "One" {
+		t.Fatal(products, err)
+	}
+	for _, bad := range []string{project(1, "Bad Slug"), project(1, "x") + "," + project(2, "x"), project(1, "2") + "," + project(2, "")} {
+		if _, err := ParseCatalog(strings.NewReader("[" + bad + "]")); err == nil {
+			t.Fatal("accepted", bad)
+		}
 	}
 }
 

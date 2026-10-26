@@ -37,11 +37,17 @@ The top level is a nonempty array of projects. Each project contains:
 - `id`: unique nonzero 16-bit offline project ID, agreed with the app.
 - `key_id`: nonzero 8-bit signing key ID. Provide its seed privately through
   `DAHLUNAS_KEY_<id>_<key_id>` and provision its public key in that app.
-- `name` (optional): the project's one-line name, with `id` and `en` text. The
-  home page groups each project's products under it.
+- `slug` (optional): the project's page, `/projects/<slug>`, in lowercase
+  letters, digits and hyphens; defaults to the `id`. Link to this page from
+  the project's website, since the home page lists projects only when there are
+  several (with one, the home page is that project's page).
+- `name` (optional): the project's one-line name, with `id` and `en` text,
+  shown on its card on the home page and atop its page.
+- `tagline` (optional): one line under the name, with `id` and `en` text, such
+  as "A coding adventure for kids"; reuse the app store subtitle.
 - `icon` (optional): a square image shown beside the name, such as
   `coba-lagi-icon.png`.
-- `image` (optional): a screenshot shown above the products, with an `id` and
+- `image` (optional): a screenshot shown on the card and the project's page, with an `id` and
   an `en` file name so each language sees its own.
 - `activation` (optional): `true` binds each code to one device at a time
   through `POST /activations` ([device activation](activation.md)). Only for apps
@@ -75,7 +81,9 @@ Icons and images are file names, not URLs: commit the files to
 `internal/web/static/products/` (PNG, JPEG, WebP or SVG; lowercase names with
 hyphens) so buyers' browsers never contact a third party. A missing file stops
 startup. Keep screenshots small, about 960 pixels wide. When every product of a
-project has the same description, the home page shows it once under the image.
+project has the same description, its page shows it once under the image. When
+the products also share a name and gateway, and have no image of their own,
+they differ only in price and the page offers them as a choice of amounts.
 
 ## Existing orders and rotation
 

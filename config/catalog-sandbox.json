@@ -2,9 +2,14 @@
   {
     "id": 1,
     "key_id": 1,
+    "slug": "coba-lagi",
     "name": {
       "id": "Coba Lagi",
       "en": "Coba Lagi"
+    },
+    "tagline": {
+      "id": "Petualangan coding untuk anak",
+      "en": "A coding adventure for kids"
     },
     "icon": "coba-lagi-icon.png",
     "image": {
@@ -70,9 +75,14 @@
   {
     "id": 2,
     "key_id": 1,
+    "slug": "bedug",
     "name": {
       "id": "Bedug",
       "en": "Bedug"
+    },
+    "tagline": {
+      "id": "Jadwal salat, kiblat dan kalender Hijriah",
+      "en": "Prayer times, Qibla and Hijri calendar"
     },
     "icon": "bedug-icon.png",
     "activation": true,

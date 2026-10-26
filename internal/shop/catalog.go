@@ -25,13 +25,16 @@ type EmailCopy struct {
 	Instructions Text `json:"instructions"`
 }
 
-// ProjectConfig's name, icon and image are optional; they group and illustrate
-// the project's products on the home page. Activation binds its codes to one
+// ProjectConfig's slug, name, tagline, icon and image are optional; they
+// group and illustrate the project's products in the shop. The slug names the
+// project's page, /projects/<slug>, and defaults to the project ID. Activation binds its codes to one
 // device through Dahlunas; children's apps never set it.
 type ProjectConfig struct {
 	ID         uint16          `json:"id"`
 	KeyID      uint8           `json:"key_id"`
+	Slug       string          `json:"slug,omitempty"`
 	Name       Text            `json:"name"`
+	Tagline    Text            `json:"tagline"`
 	Icon       string          `json:"icon,omitempty"`
 	Image      Text            `json:"image"`
 	Activation bool            `json:"activation,omitempty"`
@@ -73,7 +76,7 @@ func ParseCatalog(r io.Reader) ([]Product, error) {
 	validText := func(t Text) bool {
 		return strings.TrimSpace(t.ID) != "" && strings.TrimSpace(t.EN) != "" && !strings.ContainsAny(t.ID+t.EN, "\r\x00")
 	}
-	projectIDs, slugs := map[uint16]bool{}, map[string]bool{}
+	projectIDs, slugs, projectSlugs := map[uint16]bool{}, map[string]bool{}, map[string]bool{}
 	slugPattern := regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
 	// Images are files under web/static/products, never third-party URLs that
 	// would expose buyers' IP addresses.
@@ -89,8 +92,15 @@ func ParseCatalog(r io.Reader) ([]Product, error) {
 			return nil, errors.New("catalog: project IDs must be unique and nonzero, with a key and products")
 		}
 		projectIDs[project.ID] = true
-		if !optional(project.Name, line) || (project.Icon != "" && !asset(project.Icon)) || !optional(project.Image, asset) {
-			return nil, fmt.Errorf("catalog: project %d needs a bilingual one-line name and image/icon file names such as coba-lagi-icon.png", project.ID)
+		if project.Slug == "" {
+			project.Slug = strconv.Itoa(int(project.ID))
+		}
+		if !slugPattern.MatchString(project.Slug) || len(project.Slug) > 100 || projectSlugs[project.Slug] {
+			return nil, fmt.Errorf("catalog: project %d needs a unique slug such as coba-lagi", project.ID)
+		}
+		projectSlugs[project.Slug] = true
+		if !optional(project.Name, line) || !optional(project.Tagline, line) || (project.Icon != "" && !asset(project.Icon)) || !optional(project.Image, asset) {
+			return nil, fmt.Errorf("catalog: project %d needs a bilingual one-line name and tagline, and image/icon file names such as coba-lagi-icon.png", project.ID)
 		}
 		copy := project.Email
 		if !validText(copy.Subject) || strings.ContainsAny(copy.Subject.ID+copy.Subject.EN, "\n") || !validText(copy.ThankYou) || !validText(copy.Instructions) {
@@ -111,7 +121,7 @@ func ParseCatalog(r io.Reader) ([]Product, error) {
 				return nil, errors.New("catalog: require Midtrans/IDR or Lemon Squeezy/USD with numeric variant_id (USD limit 100000 cents)")
 			}
 			slugs[p.Slug] = true
-			products = append(products, Product{Slug: p.Slug, NameID: p.Name.ID, NameEN: p.Name.EN, DescriptionID: p.Description.ID, DescriptionEN: p.Description.EN, Price: p.Price, Project: project.ID, Product: p.ID, KeyID: project.KeyID, Delivery: copy, Gateway: gateway, Currency: currency, VariantID: p.VariantID, ProjectName: project.Name, Icon: project.Icon, ProjectImage: project.Image, Image: p.Image, Activation: project.Activation})
+			products = append(products, Product{Slug: p.Slug, NameID: p.Name.ID, NameEN: p.Name.EN, DescriptionID: p.Description.ID, DescriptionEN: p.Description.EN, Price: p.Price, Project: project.ID, Product: p.ID, KeyID: project.KeyID, Delivery: copy, Gateway: gateway, Currency: currency, VariantID: p.VariantID, ProjectSlug: project.Slug, ProjectName: project.Name, Tagline: project.Tagline, Icon: project.Icon, ProjectImage: project.Image, Image: p.Image, Activation: project.Activation})
 		}
 	}
 	return products, nil

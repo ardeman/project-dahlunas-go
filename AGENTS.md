@@ -38,6 +38,8 @@ Record architectural choices here as one line each: date, decision, reason.
 
 - 2026-10-26: Bedug joins as project 2, selling infaq codes only to its Windows and Linux builds, where store billing doesn't exist; its phone and Mac App Store builds keep in-app purchase, as store rules require. More projects come through per-environment catalogs in `config/`, copied into the image, since sandbox and production sign with different key IDs; production keeps the embedded Coba Lagi catalog until an app can accept a new project's codes. Catat Saja Plus will be a real subscription written to the buyer's account, not a code (planned, README → Roadmap).
 
+- 2026-10-26: The home page lists projects as cards (icon, name, tagline, lowest price) linking to `/projects/<slug>`, where the checkout form offers price tiers as amount boxes; with one project the home page is that project's page. Project websites link to the project's page, which stays put as projects join.
+
 - 2026-10-26: The home page groups products by project, with an optional catalog name, icon and per-language screenshot served from `internal/web/static/products/`; file names only, never URLs, so no third-party image request exposes buyer IPs. Rupiah prices group thousands with dots (`Rp 19.000`).
 
 - 2026-10-26: The sandbox gets its own Hosting site, `dah-lunas-sandbox.web.app`, rewriting to `dahlunas-development` in the same Firebase project; a memorable address, and sandbox tests now pass through Hosting like production. The checkout CSRF cookie is named `__session`, the only cookie Hosting forwards. Separate Firebase projects per environment can wait until others get dev access.
