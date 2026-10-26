@@ -5,7 +5,7 @@
 <script src="/static/checkout.js" defer></script></head>
 <body>{{template "header" .}}
 <main id="order" {{if not .Order.Paid}}hx-get="{{.Href .Order.Path}}" hx-trigger="every 5s" hx-select="#order" hx-swap="outerHTML"{{end}}>
-{{if not .Production}}<p class="notice">{{.T "Sandbox: pembayaran percobaan." "Sandbox: test payment."}}</p>{{end}}
+{{if not .Production}}<p class="notice">{{.T "Sandbox: pembayaran percobaan, tanpa uang sungguhan." "Sandbox: test payments, no real money."}}</p>{{end}}
 <p class="product">{{.T .Order.Product.NameID .Order.Product.NameEN}}</p>
 {{if .Order.Paid}}
 <p class="stamp" aria-hidden="true">Lunas</p>
@@ -20,7 +20,7 @@
 <p>{{.Order.Product.FormattedPrice}}</p>
 {{if or (eq .Order.State "pending") (eq .Order.State "capture")}}
 <p>{{.T "Menunggu konfirmasi pembayaran. Halaman ini diperbarui otomatis." "Waiting for payment confirmation. This page updates automatically."}}</p>
-{{if eq .Order.Product.GatewayName "lemonsqueezy"}}{{if .Order.CheckoutURL}}<a href="{{.Order.CheckoutURL}}" rel="noreferrer">{{.T "Bayar melalui Lemon Squeezy" "Pay with Lemon Squeezy"}}</a><p>{{.T "Pajak yang berlaku ditampilkan saat pembayaran." "Applicable taxes are shown at checkout."}}</p>{{end}}{{else}}{{if .Order.SnapToken}}<button type="button" data-snap-token="{{.Order.SnapToken}}">{{.T "Bayar dengan QRIS" "Pay with QRIS"}}</button>{{end}}{{end}}
+{{if eq .Order.Product.GatewayName "lemonsqueezy"}}{{if .Order.CheckoutURL}}<a href="{{.Order.CheckoutURL}}" rel="noreferrer">{{.T "Bayar melalui Lemon Squeezy" "Pay with Lemon Squeezy"}}</a>{{end}}{{else}}{{if .Order.SnapToken}}<button type="button" data-snap-token="{{.Order.SnapToken}}">{{.T "Bayar dengan QRIS" "Pay with QRIS"}}</button>{{end}}{{end}}
 {{else}}<p>{{.T "Pembayaran belum berhasil atau telah berakhir." "Payment was unsuccessful or has ended."}}</p><a href="{{.Href "/"}}">{{.T "Kembali ke toko" "Back to shop"}}</a>{{end}}
 <p id="payment-error" role="status"></p>
 {{end}}

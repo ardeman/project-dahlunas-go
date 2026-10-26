@@ -13,23 +13,23 @@
 <body>
   {{template "header" .}}
   <main>
-  <h1>{{.T "Pembayaran untuk proyek Ardeman." "Payments for Ardeman's projects."}}</h1>
+  <h1>{{.T "Bayar sekali, dapatkan kode." "Pay once, get your code."}}</h1>
   {{if .Shop}}
-  {{if not .Production}}<p class="notice">{{.T "Sandbox — pembayaran percobaan, tanpa uang sungguhan." "Sandbox — test payments, no real money."}}</p>{{end}}
+  {{if not .Production}}<p class="notice">{{.T "Sandbox: pembayaran percobaan, tanpa uang sungguhan." "Sandbox: test payments, no real money."}}</p>{{end}}
   <section aria-labelledby="product-title">
     <h2 id="product-title">{{.T "Pilih produk" "Choose a product"}}</h2>
     <form method="post" action="{{.Href "/checkout"}}">
       <input type="hidden" name="csrf" value="{{.CSRF}}">
       <fieldset><legend>{{.T "Produk" "Product"}}</legend><div class="choices">
       {{range $index, $product := .Shop.Products}}
-      <label class="choice"><input type="radio" name="product" value="{{.Slug}}" {{if eq $index 0}}checked{{end}} required><span class="item"><strong>{{$.T .NameID .NameEN}}</strong> <span class="price">{{.FormattedPrice}}</span><span class="detail">{{$.T .DescriptionID .DescriptionEN}} <small>{{if eq .GatewayName "lemonsqueezy"}}Lemon Squeezy (USD){{else}}{{$.T "QRIS lewat Midtrans" "QRIS via Midtrans"}}{{end}}</small></span></span></label>
+      <label class="choice"><input type="radio" name="product" value="{{.Slug}}" {{if eq $index 0}}checked{{end}} required><span class="item"><strong>{{$.T .NameID .NameEN}}</strong> <span class="price">{{.FormattedPrice}}</span><span class="detail">{{$.T .DescriptionID .DescriptionEN}} <small>{{if eq .GatewayName "lemonsqueezy"}}{{$.T "Lemon Squeezy (USD), belum termasuk pajak" "Lemon Squeezy (USD), plus applicable tax"}}{{else}}{{$.T "QRIS lewat Midtrans" "QRIS via Midtrans"}}{{end}}</small></span></span></label>
       {{end}}</div></fieldset>
       <label for="email">{{.T "Email untuk menerima kode" "Email for your code"}}</label>
       <input type="email" id="email" name="email" autocomplete="email" maxlength="254" required placeholder="{{.T "nama@example.com" "name@example.com"}}">
       <label class="consent"><input type="checkbox" name="accept" value="yes" required><span>{{if .EN}}I agree to the <a href="{{.Href "/terms"}}">terms</a>, <a href="{{.Href "/refunds"}}">refund policy</a>, and <a href="{{.Href "/privacy"}}">privacy policy</a>.{{else}}Saya menyetujui <a href="{{.Href "/terms"}}">ketentuan</a>, <a href="{{.Href "/refunds"}}">kebijakan pengembalian dana</a>, dan <a href="{{.Href "/privacy"}}">privasi</a>.{{end}}</span></label>
       {{if .TurnstileSiteKey}}<div class="cf-turnstile" data-sitekey="{{.TurnstileSiteKey}}" data-action="checkout" data-language="{{.Lang}}"></div><noscript><p>{{.T "Aktifkan JavaScript untuk verifikasi pembayaran." "Enable JavaScript for checkout verification."}}</p></noscript>{{end}}
       <button type="submit">{{.T "Lanjut ke pembayaran" "Continue to payment"}}</button>
-      <p class="muted">{{.T "Metode pembayaran mengikuti produk pilihan Anda. Pajak yang berlaku ditampilkan saat pembayaran. Kode tersedia setelah konfirmasi pembayaran dan dikirim melalui email." "Payment methods depend on your selected product. Applicable taxes are shown at checkout. Your code appears after payment confirmation and is sent by email."}}</p>
+      <p class="muted">{{.T "Kode muncul di halaman pesanan setelah pembayaran dikonfirmasi, lalu dikirim ke email Anda." "Your code appears on the order page once payment is confirmed, and is emailed to you."}}</p>
     </form>
   </section>
   {{else}}<p class="closed">{{.T "Belum menerima pembayaran." "Checkout is not open yet."}}</p>{{end}}
