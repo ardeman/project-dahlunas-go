@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Pesanan / Order · Dahlunas</title>
-<link rel="stylesheet" href="/static/shop.css"><script src="/static/htmx.min.js" defer></script>
+<link rel="stylesheet" href="/static/shop.css"><link rel="icon" href="/static/icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/static/apple-touch-icon.png"><script src="/static/htmx.min.js" defer></script>
 {{if eq .Order.Product.GatewayName "midtrans"}}{{if .Production}}<script src="https://app.midtrans.com/snap/snap.js" data-client-key="{{.ClientKey}}" defer></script>{{else}}<script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="{{.ClientKey}}" defer></script>{{end}}{{end}}
 <script src="/static/checkout.js" defer></script></head>
 <body><header><a href="/" class="brand">Dahlunas</a></header>
