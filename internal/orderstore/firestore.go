@@ -10,16 +10,18 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strings"
 	"time"
 
 	"github.com/ardeman/project-dahlunas-go/internal/shop"
 )
 
 type Firestore struct {
-	base     string
-	client   *http.Client
-	token    string
-	emulator bool
+	// documents is the database's documents URL; base adds the collection.
+	documents, collection, base string
+	client                      *http.Client
+	token                       string
+	emulator                    bool
 }
 
 // New uses Cloud Run's attached service account when token is empty. For local
@@ -44,14 +46,31 @@ func New(project, token, host string, production bool) (*Firestore, error) {
 	if production {
 		collection = "orders-production"
 	}
-	return &Firestore{base: root + "/v1/projects/" + project + "/databases/(default)/documents/" + collection + "/", token: token, emulator: host != "", client: &http.Client{Timeout: 15 * time.Second}}, nil
+	documents := root + "/v1/projects/" + project + "/databases/(default)/documents"
+	return &Firestore{documents: documents, collection: collection, base: documents + "/" + collection + "/", token: token, emulator: host != "", client: &http.Client{Timeout: 15 * time.Second}}, nil
+}
+
+// The order is one JSON payload; deliveryPending is a separate field so the
+// delivery sweep can query it.
+type value struct {
+	String  *string `json:"stringValue,omitempty"`
+	Boolean *bool   `json:"booleanValue,omitempty"`
 }
 
 type document struct {
-	Fields map[string]struct {
-		Value string `json:"stringValue"`
-	} `json:"fields"`
-	UpdateTime string `json:"updateTime,omitempty"`
+	Name       string           `json:"name,omitempty"`
+	Fields     map[string]value `json:"fields"`
+	UpdateTime string           `json:"updateTime,omitempty"`
+}
+
+func decode(d document, id string) (shop.Order, error) {
+	var result shop.Order
+	payload := d.Fields["payload"].String
+	if payload == nil || json.Unmarshal([]byte(*payload), &result) != nil || result.ID != id || d.UpdateTime == "" {
+		return shop.Order{}, errors.New("store: invalid record")
+	}
+	result.Revision = d.UpdateTime
+	return result, nil
 }
 
 func (f *Firestore) accessToken(ctx context.Context) (string, error) {
@@ -86,9 +105,8 @@ func (f *Firestore) request(ctx context.Context, method, id, query string, o *sh
 		if err != nil {
 			return shop.Order{}, err
 		}
-		d := document{Fields: map[string]struct {
-			Value string `json:"stringValue"`
-		}{"payload": {Value: string(payload)}}}
+		text, pending := string(payload), o.DeliveryPending()
+		d := document{Fields: map[string]value{"payload": {String: &text}, "deliveryPending": {Boolean: &pending}}}
 		b, err := json.Marshal(d)
 		if err != nil {
 			return shop.Order{}, err
@@ -99,17 +117,9 @@ func (f *Firestore) request(ctx context.Context, method, id, query string, o *sh
 	if err != nil {
 		return shop.Order{}, errors.New("store: request failed")
 	}
-	r.Header.Set("Content-Type", "application/json")
-	if !f.emulator {
-		token, err := f.accessToken(ctx)
-		if err != nil {
-			return shop.Order{}, err
-		}
-		r.Header.Set("Authorization", "Bearer "+token)
-	}
-	resp, err := f.client.Do(r)
+	resp, err := f.do(ctx, r)
 	if err != nil {
-		return shop.Order{}, errors.New("store: unavailable")
+		return shop.Order{}, err
 	}
 	defer resp.Body.Close()
 	switch resp.StatusCode {
@@ -132,12 +142,70 @@ func (f *Firestore) request(ctx context.Context, method, id, query string, o *sh
 		return shop.Order{}, errors.New("store: operation failed")
 	}
 	var d document
-	var result shop.Order
-	if json.NewDecoder(io.LimitReader(resp.Body, 128<<10)).Decode(&d) != nil || json.Unmarshal([]byte(d.Fields["payload"].Value), &result) != nil || result.ID != id || d.UpdateTime == "" {
+	if json.NewDecoder(io.LimitReader(resp.Body, 128<<10)).Decode(&d) != nil {
 		return shop.Order{}, errors.New("store: invalid record")
 	}
-	result.Revision = d.UpdateTime
-	return result, nil
+	return decode(d, id)
+}
+
+func (f *Firestore) do(ctx context.Context, r *http.Request) (*http.Response, error) {
+	r.Header.Set("Content-Type", "application/json")
+	if !f.emulator {
+		token, err := f.accessToken(ctx)
+		if err != nil {
+			return nil, err
+		}
+		r.Header.Set("Authorization", "Bearer "+token)
+	}
+	resp, err := f.client.Do(r)
+	if err != nil {
+		return nil, errors.New("store: unavailable")
+	}
+	return resp, nil
+}
+
+// sweepLimit bounds one sweep; the next scheduled run picks up the rest.
+const sweepLimit = 50
+
+// Undelivered queries paid orders whose email is not confirmed sent. Records
+// written before the deliveryPending field existed are not found.
+func (f *Firestore) Undelivered(ctx context.Context) ([]shop.Order, error) {
+	query, _ := json.Marshal(map[string]any{"structuredQuery": map[string]any{
+		"from":  []map[string]string{{"collectionId": f.collection}},
+		"where": map[string]any{"fieldFilter": map[string]any{"field": map[string]string{"fieldPath": "deliveryPending"}, "op": "EQUAL", "value": map[string]bool{"booleanValue": true}}},
+		"limit": sweepLimit,
+	}})
+	r, err := http.NewRequestWithContext(ctx, http.MethodPost, f.documents+":runQuery", bytes.NewReader(query))
+	if err != nil {
+		return nil, errors.New("store: request failed")
+	}
+	resp, err := f.do(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	var results []struct {
+		Document *document `json:"document"`
+	}
+	if resp.StatusCode != 200 || json.NewDecoder(io.LimitReader(resp.Body, sweepLimit*128<<10)).Decode(&results) != nil {
+		return nil, errors.New("store: query failed")
+	}
+	var orders []shop.Order
+	for _, result := range results {
+		if result.Document == nil {
+			continue
+		}
+		id := result.Document.Name[strings.LastIndex(result.Document.Name, "/")+1:]
+		if !orderID.MatchString(id) {
+			return nil, errors.New("store: invalid record")
+		}
+		o, err := decode(*result.Document, id)
+		if err != nil {
+			return nil, err
+		}
+		orders = append(orders, o)
+	}
+	return orders, nil
 }
 
 func (f *Firestore) Create(ctx context.Context, o shop.Order) error {

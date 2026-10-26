@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strconv"
@@ -105,5 +106,57 @@ func TestStoreEnvironmentIsolation(t *testing.T) {
 	}
 	if _, err := sandbox.Get(context.Background(), "../private"); !errors.Is(err, shop.ErrNotFound) {
 		t.Fatal(err)
+	}
+}
+
+func TestUndeliveredQueriesPendingFlag(t *testing.T) {
+	id := strings.Repeat("b", 32)
+	payload, _ := json.Marshal(shop.Order{ID: id, Paid: true})
+	var query string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != "POST" || !strings.HasSuffix(r.URL.Path, "/documents:runQuery") {
+			t.Error("unexpected request", r.Method, r.URL.Path)
+		}
+		b, _ := io.ReadAll(r.Body)
+		query = string(b)
+		text := string(payload)
+		json.NewEncoder(w).Encode([]map[string]any{
+			{"readTime": "2026-10-26T00:00:00Z"},
+			{"document": document{Name: "projects/p/databases/(default)/documents/orders-sandbox/" + id, Fields: map[string]value{"payload": {String: &text}}, UpdateTime: "2026-10-26T00:00:01Z"}},
+		})
+	}))
+	defer server.Close()
+	f, _ := New("test-project", "local-token", "", false)
+	f.documents = server.URL + "/documents"
+	orders, err := f.Undelivered(context.Background())
+	if err != nil || len(orders) != 1 || orders[0].ID != id || orders[0].Revision != "2026-10-26T00:00:01Z" {
+		t.Fatal(orders, err)
+	}
+	if !strings.Contains(query, `"collectionId":"orders-sandbox"`) || !strings.Contains(query, `"fieldPath":"deliveryPending"`) {
+		t.Fatal(query)
+	}
+}
+
+func TestSaveWritesDeliveryPendingField(t *testing.T) {
+	var written document
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		json.NewDecoder(r.Body).Decode(&written)
+		written.UpdateTime = "2026-10-26T00:00:02Z"
+		json.NewEncoder(w).Encode(written)
+	}))
+	defer server.Close()
+	f, _ := New("test-project", "local-token", "", false)
+	f.base = server.URL + "/orders-sandbox/"
+	o := shop.Order{ID: strings.Repeat("c", 32), Paid: true, Revision: "r1"}
+	if err := f.Save(context.Background(), o); err != nil {
+		t.Fatal(err)
+	}
+	if p := written.Fields["deliveryPending"].Boolean; p == nil || !*p {
+		t.Fatal("paid, unsent order not flagged")
+	}
+	o.EmailSent = true
+	f.Save(context.Background(), o)
+	if p := written.Fields["deliveryPending"].Boolean; p == nil || *p {
+		t.Fatal("sent order still flagged")
 	}
 }

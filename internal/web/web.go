@@ -29,6 +29,8 @@ type Options struct {
 	ClientKey                   string
 	Production                  bool
 	Support, RefundID, RefundEN string
+	// TaskToken authorizes Cloud Scheduler's delivery sweep.
+	TaskToken string
 }
 
 func Handler(options ...Options) http.Handler {
@@ -60,6 +62,7 @@ func Handler(options ...Options) http.Handler {
 		})
 	}
 	registerShop(mux, config)
+	registerTasks(mux, config)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// no-referrer would make browsers post forms with Origin: null, failing the checkout origin check.

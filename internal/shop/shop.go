@@ -48,11 +48,19 @@ type Order struct {
 
 // Store persists an order atomically. Save must compare Revision, returning
 // ErrConflict on stale writes; Create must never overwrite an existing order.
+// Undelivered lists orders whose stored DeliveryPending was true when written.
 type Store interface {
 	Create(context.Context, Order) error
 	Get(context.Context, string) (Order, error)
 	Save(context.Context, Order) error
+	Undelivered(context.Context) ([]Order, error)
 }
+
+// DeliveryPending reports a paid order whose email is not confirmed sent.
+func (o Order) DeliveryPending() bool { return o.Paid && !o.EmailSent }
+
+// deliveryWindow ends automatic sends before Resend's 24-hour deduplication.
+const deliveryWindow = 23 * time.Hour
 
 type Mailer interface {
 	Send(context.Context, Order) error
@@ -276,7 +284,7 @@ func (s *Service) Deliver(ctx context.Context, id string) error {
 			return nil
 		}
 		now := s.now()
-		if o.EmailLease.After(now) || (!o.EmailFirstAttempt.IsZero() && now.Sub(o.EmailFirstAttempt) >= 23*time.Hour) {
+		if o.EmailLease.After(now) || (!o.EmailFirstAttempt.IsZero() && now.Sub(o.EmailFirstAttempt) >= deliveryWindow) {
 			return ErrRetry
 		}
 		if o.EmailFirstAttempt.IsZero() {
@@ -308,4 +316,39 @@ func (s *Service) Deliver(ctx context.Context, id string) error {
 		return ErrConflict
 	}
 	return ErrConflict
+}
+
+type SweepReport struct {
+	Delivered, Pending int
+	// Review lists order IDs whose automatic delivery window has closed.
+	Review []string
+}
+
+// Sweep retries delivery for paid orders that are still waiting for email, so
+// delivery does not depend on gateways repeating their notifications.
+func (s *Service) Sweep(ctx context.Context) (SweepReport, error) {
+	var report SweepReport
+	orders, err := s.Store.Undelivered(ctx)
+	if err != nil {
+		return report, err
+	}
+	for _, o := range orders {
+		if !o.DeliveryPending() {
+			// Saving refreshes a stale index, such as after a manual review.
+			if err := s.Store.Save(ctx, o); err != nil && !errors.Is(err, ErrConflict) {
+				return report, err
+			}
+			continue
+		}
+		err := s.Deliver(ctx, o.ID)
+		switch {
+		case err == nil:
+			report.Delivered++
+		case errors.Is(err, ErrRetry) && !o.EmailFirstAttempt.IsZero() && s.now().Sub(o.EmailFirstAttempt) >= deliveryWindow:
+			report.Review = append(report.Review, o.ID)
+		default:
+			report.Pending++
+		}
+	}
+	return report, nil
 }

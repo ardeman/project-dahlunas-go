@@ -62,6 +62,10 @@ func TestProductionRejectsInsecureURLAndEmulator(t *testing.T) {
 	if _, err := Handler(); err != nil {
 		t.Fatal(err)
 	}
+	t.Setenv("DAHLUNAS_TASK_TOKEN", "short")
+	if _, err := Handler(); err == nil || !strings.Contains(err.Error(), "DAHLUNAS_TASK_TOKEN") {
+		t.Fatal("accepted a guessable task token", err)
+	}
 }
 
 func TestCustomCatalogValidatesEachProjectKey(t *testing.T) {

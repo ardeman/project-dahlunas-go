@@ -129,6 +129,10 @@ func Handler() (http.Handler, error) {
 		config.TurnstileSiteKey = siteKey
 		config.BotVerifier = turnstile.New(secret, u.Hostname())
 	}
+	config.TaskToken = strings.TrimSpace(os.Getenv("DAHLUNAS_TASK_TOKEN"))
+	if config.TaskToken != "" && len(config.TaskToken) < 32 {
+		return nil, errors.New("DAHLUNAS_TASK_TOKEN must be at least 32 characters")
+	}
 	config.Production = production
 	config.ClientKey = os.Getenv("MIDTRANS_CLIENT_KEY")
 	return web.Handler(config), nil

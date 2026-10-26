@@ -52,6 +52,17 @@ func (m *memoryStore) Save(_ context.Context, o Order) error {
 	m.orders[o.ID] = o
 	return nil
 }
+func (m *memoryStore) Undelivered(_ context.Context) ([]Order, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var result []Order
+	for _, o := range m.orders {
+		if o.DeliveryPending() {
+			result = append(result, o)
+		}
+	}
+	return result, nil
+}
 
 type gateway struct {
 	status   payment.Status
@@ -305,5 +316,38 @@ func TestLemonSqueezyOrderBinding(t *testing.T) {
 				t.Fatal("duplicate notification changed fulfillment")
 			}
 		})
+	}
+}
+
+func TestSweepRetriesDeliveryAndFlagsReview(t *testing.T) {
+	s, _, m, o := setup(t)
+	m.fail = true
+	s.Notify(context.Background(), nil)
+	if r, err := s.Sweep(context.Background()); err != nil || r.Pending != 1 || m.calls != 1 {
+		t.Fatal("sweep ignored the lease", r, err, m.calls)
+	}
+	now := s.now()
+	s.Now = func() time.Time { return now.Add(2 * time.Minute) }
+	if r, err := s.Sweep(context.Background()); err != nil || r.Pending != 1 || m.calls != 2 {
+		t.Fatal("sweep did not retry", r, err, m.calls)
+	}
+	s.Now = func() time.Time { return now.Add(23 * time.Hour) }
+	if r, err := s.Sweep(context.Background()); err != nil || len(r.Review) != 1 || r.Review[0] != o.ID || m.calls != 2 {
+		t.Fatal("expired delivery was not flagged for review", r, err, m.calls)
+	}
+}
+
+func TestSweepDeliversAndThenSkips(t *testing.T) {
+	s, _, m, _ := setup(t)
+	m.fail = true
+	s.Notify(context.Background(), nil)
+	now := s.now()
+	s.Now = func() time.Time { return now.Add(2 * time.Minute) }
+	m.fail = false
+	if r, err := s.Sweep(context.Background()); err != nil || r.Delivered != 1 || m.calls != 2 {
+		t.Fatal(r, err, m.calls)
+	}
+	if r, err := s.Sweep(context.Background()); err != nil || r.Delivered+r.Pending+len(r.Review) != 0 || m.calls != 2 {
+		t.Fatal("delivered order swept again", r, err)
 	}
 }

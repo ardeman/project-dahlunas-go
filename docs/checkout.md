@@ -129,12 +129,16 @@ and [widget setup](https://developers.cloudflare.com/turnstile/get-started/clien
   and stable Resend idempotency key prevent concurrent duplicate deliveries.
   Failed delivery returns a retryable notification response. A later webhook retry
   can send again after the one-minute lease expires, within 23 hours of the first
-  attempt. There is no background worker; retries depend on gateway notifications
-  or a dashboard resend of the notification.
+  attempt. Retries come from gateway notifications, a dashboard resend of the
+  notification, or the scheduled delivery sweep (below).
 - If delivery remains ambiguous after 23 hours, automatic sends stop before
-  Resend's 24-hour idempotency window expires. Review the order and provider logs
-  manually, help the buyer recover their private order link, and confirm delivery
-  before arranging a manual email. Do not clear delivery fields blindly.
+  Resend's 24-hour idempotency window expires, and the sweep logs
+  `delivery needs review: order <id>` on every run until it is resolved. Review the
+  order and Resend's logs manually, help the buyer recover their private order
+  link, and confirm delivery before arranging a manual email. Do not clear delivery
+  fields blindly. Once delivery is confirmed, set `"EmailSent":true` in the order's
+  `payload` in the Firestore console; the next sweep clears its `deliveryPending`
+  flag.
 - If a payment is missing a notification, check Midtrans and resend its HTTP
   notification from the dashboard. Browser success callbacks never grant access.
   Refunds are handled in Midtrans; already-issued offline codes cannot be revoked.
@@ -146,6 +150,31 @@ and [widget setup](https://developers.cloudflare.com/turnstile/get-started/clien
   requests before production, and apply equivalent redaction/exclusion at any
   reverse proxy. No buyer data, provider
   response bodies, signing keys, or gateway keys are written to application logs.
+
+## Delivery monitoring
+
+Each order record has a `deliveryPending` field that is true while an order is
+paid but its email is not confirmed sent. `POST /tasks/deliveries` retries those
+orders (up to 50 per run) and answers with counts only:
+`{"delivered":0,"pending":0,"review":0}`. The route exists only when
+`DAHLUNAS_TASK_TOKEN` is set (at least 32 characters, from Secret Manager), and it
+requires `Authorization: Bearer <token>`. Orders saved before this field existed
+are not swept.
+
+Schedule it every 10 minutes for each service, with its own token:
+
+```sh
+openssl rand -hex 32   # store as DAHLUNAS_TASK_TOKEN in Secret Manager
+gcloud scheduler jobs create http dahlunas-deliveries \
+  --location asia-southeast2 --schedule "*/10 * * * *" \
+  --uri "https://<service URL>/tasks/deliveries" --http-method POST \
+  --headers "Authorization=Bearer <token>"
+```
+
+Then create a log-based alert in Cloud Logging on the service's logs with the
+filter `textPayload:"delivery needs review"`, and optionally another on
+`textPayload:"delivery sweep failed"`, that notifies your email. The logs carry order
+IDs only, never buyer data or codes.
 
 ## Verification
 

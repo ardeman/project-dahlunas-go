@@ -32,6 +32,8 @@ A change is done only when the **Checks** command in `README.md` passes. If you 
 
 Record architectural choices here as one line each: date, decision, reason.
 
+- 2026-10-26: Email delivery is retried by a Cloud Scheduler call to a bearer-token endpoint that queries a top-level `deliveryPending` Firestore field, with fixed log lines for log-based alerts; Cloud Run has no background worker, and gateway notifications alone may stop before a stuck email is sent.
+
 - 2026-10-26: Checkout uses a bounded per-instance token bucket (burst 10, refill 30/minute) plus server-verified Turnstile required in production; avoids retaining buyer IPs or trusting proxy headers, while leaving payment webhooks unaffected. Fleet-wide edge quotas remain separate.
 
 - 2026-10-26: Lemon Squeezy uses optional USD catalog entries, signed webhooks plus authoritative order/item reads, and a per-order random payment proof; one shared production flag separates both gateways' test/live orders, while legacy records remain Midtrans/IDR. Prices are integer minor units and tax-exclusive; the default catalog stays Midtrans-only.

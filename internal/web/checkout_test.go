@@ -44,6 +44,15 @@ func (s *webStore) Save(_ context.Context, o shop.Order) error {
 	s.orders[o.ID] = o
 	return nil
 }
+func (s *webStore) Undelivered(_ context.Context) ([]shop.Order, error) {
+	var result []shop.Order
+	for _, o := range s.orders {
+		if o.DeliveryPending() {
+			result = append(result, o)
+		}
+	}
+	return result, nil
+}
 
 type webGateway struct {
 	checkout  payment.Checkout
