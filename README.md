@@ -33,7 +33,7 @@ Go (standard library first) with htmx pages, running on Cloud Run behind Firebas
 | Checks | `test -z "$(gofmt -l .)" && go vet ./... && go test ./...` |
 | Make a signing key | `go run ./cmd/mint new-key -project 1 -key 1` (writes the seed to a `.key` file, prints the public key) |
 | Mint a code by hand | `go run ./cmd/mint code -project 1 -product 1 -key 1` (reads `DAHLUNAS_KEY_1_1`) |
-| Deploy the services | Automatic: a push to `main` that passes the checks deploys `dahlunas-development`, then `dahlunas` after the owner approves the `production` environment in GitHub Actions |
+| Deploy the services | Automatic: a push to `main` that passes the checks deploys `dahlunas-development`, then `dahlunas` after the owner approves the `production` environment in GitHub Actions; a newer push cancels an approval still waiting |
 | Deploy the service by hand | `gcloud run deploy dahlunas --source . --region asia-southeast2` |
 | Deploy Hosting | `firebase deploy --only hosting` |
 
