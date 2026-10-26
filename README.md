@@ -51,7 +51,7 @@ Go (standard library first) with htmx pages, running on Cloud Run behind Firebas
 - `.github/workflows/checks.yml` runs the Checks command on pushes and pull requests, then deploys both Cloud Run services from `main` unless a push changes only docs, Markdown, `public/`, `firebase.json` or CI files.
 - `docs/code-format.md` specifies the shared offline unlock-code format for Dahlunas and the apps.
 
-The server serves a bilingual shop at `/`, policies at `/terms`, `/refunds` and `/privacy`, private order pages at `/orders/{id}/{token}`, Midtrans notifications at `/webhooks/midtrans`, optional Lemon Squeezy notifications at `/webhooks/lemonsqueezy`, the scheduled delivery sweep at `/tasks/deliveries` (only with `DAHLUNAS_TASK_TOKEN`), and a health check at `/health`. With checkout disabled, the homepage says sales are not open.
+The server serves a bilingual shop at `/`, policies at `/terms`, `/refunds` and `/privacy`, private order pages at `/orders/{id}/{token}`, Midtrans notifications at `/webhooks/midtrans`, optional Lemon Squeezy notifications at `/webhooks/lemonsqueezy`, the scheduled delivery sweep at `/tasks/deliveries` (only with `DAHLUNAS_TASK_TOKEN`), and a health check at `/health`. With checkout disabled, the homepage says sales are not open. Pages show one language at a time: `?lang=id` or `?lang=en` picks it (links keep the choice), otherwise the browser's `Accept-Language`, otherwise Indonesian.
 
 ## Roadmap
 

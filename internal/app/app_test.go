@@ -19,7 +19,7 @@ func TestDisabledShopNeedsNoCredentials(t *testing.T) {
 	}
 	r := httptest.NewRecorder()
 	h.ServeHTTP(r, httptest.NewRequest("GET", "/", nil))
-	if r.Code != 200 || !strings.Contains(r.Body.String(), "Checkout is not open yet") {
+	if r.Code != 200 || !strings.Contains(r.Body.String(), "Belum menerima pembayaran") {
 		t.Fatal(r.Code, r.Body.String())
 	}
 }

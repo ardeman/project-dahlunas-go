@@ -1,30 +1,29 @@
 <!doctype html>
-<html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Pesanan / Order · Dahlunas</title>
+<html lang="{{.Lang}}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{.T "Pesanan" "Order"}} · Dahlunas</title>
 <link rel="stylesheet" href="/static/shop.css"><link rel="icon" href="/static/icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/static/apple-touch-icon.png"><script src="/static/htmx.min.js" defer></script>
 {{if eq .Order.Product.GatewayName "midtrans"}}{{if .Production}}<script src="https://app.midtrans.com/snap/snap.js" data-client-key="{{.ClientKey}}" defer></script>{{else}}<script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="{{.ClientKey}}" defer></script>{{end}}{{end}}
 <script src="/static/checkout.js" defer></script></head>
-<body><header><a href="/" class="brand">Dahlunas</a></header>
-<main id="order" {{if not .Order.Paid}}hx-get="{{.Order.Path}}" hx-trigger="every 5s" hx-select="#order" hx-swap="outerHTML"{{end}}>
-{{if not .Production}}<p class="notice">Sandbox: pembayaran percobaan. <span lang="en">Test payment.</span></p>{{end}}
-<p class="product">{{.Order.Product.NameID}} / {{.Order.Product.NameEN}}</p>
+<body>{{template "header" .}}
+<main id="order" {{if not .Order.Paid}}hx-get="{{.Href .Order.Path}}" hx-trigger="every 5s" hx-select="#order" hx-swap="outerHTML"{{end}}>
+{{if not .Production}}<p class="notice">{{.T "Sandbox: pembayaran percobaan." "Sandbox: test payment."}}</p>{{end}}
+<p class="product">{{.T .Order.Product.NameID .Order.Product.NameEN}}</p>
 {{if .Order.Paid}}
 <p class="stamp" aria-hidden="true">Lunas</p>
-<h1>Terima kasih! <span lang="en">/ Thank you!</span></h1>
-<p>Pembayaran {{.Order.Product.FormattedPrice}} telah dikonfirmasi. <span lang="en">Your payment is confirmed.</span></p>
-<label for="code">Kode / Code</label><textarea id="code" readonly rows="5" spellcheck="false">{{.Order.Code}}</textarea>
-<p>Salin seluruh kode. <span lang="en">Copy the entire code.</span></p>
-<p class="policy-text">{{.Order.Product.DeliveryCopy.Instructions.ID}}</p>
-<p class="policy-text" lang="en">{{.Order.Product.DeliveryCopy.Instructions.EN}}</p>
-{{if .Order.EmailSent}}<p>Kode telah dikirim melalui email. <span lang="en">The code has been sent by email.</span></p>{{else}}<p>Kode Anda siap di atas. Email masih menunggu pengiriman; hubungi kami jika belum diterima.<br><span lang="en">Your code is ready above. Email delivery is pending; contact us if it does not arrive.</span></p>{{end}}
+<h1>{{.T "Terima kasih!" "Thank you!"}}</h1>
+<p>{{if .EN}}Your payment of {{.Order.Product.FormattedPrice}} is confirmed.{{else}}Pembayaran {{.Order.Product.FormattedPrice}} telah dikonfirmasi.{{end}}</p>
+<label for="code">{{.T "Kode" "Code"}}</label><textarea id="code" readonly rows="5" spellcheck="false">{{.Order.Code}}</textarea>
+<p>{{.T "Salin seluruh kode." "Copy the entire code."}}</p>
+<p class="policy-text">{{.T .Order.Product.DeliveryCopy.Instructions.ID .Order.Product.DeliveryCopy.Instructions.EN}}</p>
+{{if .Order.EmailSent}}<p>{{.T "Kode telah dikirim melalui email." "The code has been sent by email."}}</p>{{else}}<p>{{.T "Kode Anda siap di atas. Email masih menunggu pengiriman; hubungi kami jika belum diterima." "Your code is ready above. Email delivery is pending; contact us if it does not arrive."}}</p>{{end}}
 {{else}}
-<h1>Selesaikan pembayaran <span lang="en">/ Complete payment</span></h1>
+<h1>{{.T "Selesaikan pembayaran" "Complete payment"}}</h1>
 <p>{{.Order.Product.FormattedPrice}}</p>
 {{if or (eq .Order.State "pending") (eq .Order.State "capture")}}
-<p>Menunggu konfirmasi pembayaran. Halaman ini diperbarui otomatis.<br><span lang="en">Waiting for payment confirmation. This page updates automatically.</span></p>
-{{if eq .Order.Product.GatewayName "lemonsqueezy"}}{{if .Order.CheckoutURL}}<a href="{{.Order.CheckoutURL}}" rel="noreferrer">Bayar melalui Lemon Squeezy / Pay with Lemon Squeezy</a><p>Pajak yang berlaku ditampilkan saat pembayaran. <span lang="en">Applicable taxes are shown at checkout.</span></p>{{end}}{{else}}{{if .Order.SnapToken}}<button type="button" data-snap-token="{{.Order.SnapToken}}">Bayar dengan QRIS / Pay with QRIS</button>{{end}}{{end}}
-{{else}}<p>Pembayaran belum berhasil atau telah berakhir. <span lang="en">Payment was unsuccessful or has ended.</span></p><a href="/">Kembali ke toko / Back to shop</a>{{end}}
+<p>{{.T "Menunggu konfirmasi pembayaran. Halaman ini diperbarui otomatis." "Waiting for payment confirmation. This page updates automatically."}}</p>
+{{if eq .Order.Product.GatewayName "lemonsqueezy"}}{{if .Order.CheckoutURL}}<a href="{{.Order.CheckoutURL}}" rel="noreferrer">{{.T "Bayar melalui Lemon Squeezy" "Pay with Lemon Squeezy"}}</a><p>{{.T "Pajak yang berlaku ditampilkan saat pembayaran." "Applicable taxes are shown at checkout."}}</p>{{end}}{{else}}{{if .Order.SnapToken}}<button type="button" data-snap-token="{{.Order.SnapToken}}">{{.T "Bayar dengan QRIS" "Pay with QRIS"}}</button>{{end}}{{end}}
+{{else}}<p>{{.T "Pembayaran belum berhasil atau telah berakhir." "Payment was unsuccessful or has ended."}}</p><a href="{{.Href "/"}}">{{.T "Kembali ke toko" "Back to shop"}}</a>{{end}}
 <p id="payment-error" role="status"></p>
 {{end}}
-<p class="muted">Pesanan / Order: {{.Order.ID}}</p>
-<p>Simpan tautan ini secara pribadi untuk melihat kode Anda. <span lang="en">Keep this link private to retrieve your code.</span></p>
+<p class="muted">{{.T "Pesanan" "Order"}}: {{.Order.ID}}</p>
+<p>{{.T "Simpan tautan ini secara pribadi untuk melihat kode Anda." "Keep this link private to retrieve your code."}}</p>
 </main>{{template "footer" .}}</body></html>

@@ -54,11 +54,9 @@ func Handler(options ...Options) http.Handler {
 	if config.Shop != nil {
 		mux.HandleFunc("GET /{$}", withCheckoutForm(config))
 	} else {
-		mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, _ *http.Request) {
-			w.Header().Set("Content-Type", "text/html; charset=utf-8")
-			if err := pages.ExecuteTemplate(w, "home.html", config); err != nil {
-				http.Error(w, "page failed", http.StatusInternalServerError)
-			}
+		mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
+			p := newPage(r, config)
+			render(w, p, "home.html", p)
 		})
 	}
 	registerShop(mux, config)

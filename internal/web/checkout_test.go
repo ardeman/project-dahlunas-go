@@ -157,7 +157,7 @@ func TestBrowserCheckoutThroughPaidPage(t *testing.T) {
 		}
 	}
 	after := get(path)
-	if after.Code != 200 || !strings.Contains(after.Body.String(), "DL1.") || !strings.Contains(after.Body.String(), "The code has been sent by email") || m.calls != 1 {
+	if after.Code != 200 || !strings.Contains(after.Body.String(), "DL1.") || !strings.Contains(after.Body.String(), "Kode telah dikirim melalui email") || m.calls != 1 {
 		t.Fatal("paid page", after.Code, m.calls, after.Body.String())
 	}
 	if strings.Contains(after.Body.String(), "buyer@example.com") || strings.Contains(after.Body.String(), "every 5s") {
@@ -169,7 +169,7 @@ func TestPoliciesAndDisabledCheckout(t *testing.T) {
 	h := Handler()
 	for _, path := range []string{"/terms", "/privacy", "/refunds"} {
 		w := httptest.NewRecorder()
-		h.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
+		h.ServeHTTP(w, httptest.NewRequest("GET", path+"?lang=en", nil))
 		if w.Code != 200 || !strings.Contains(w.Body.String(), `lang="en"`) {
 			t.Fatal(path, w.Code)
 		}
@@ -189,7 +189,7 @@ func TestProjectCopyOnPages(t *testing.T) {
 	h := Handler(Options{Shop: s})
 	for _, path := range []string{"/", "/terms", o.Path()} {
 		w := httptest.NewRecorder()
-		h.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
+		h.ServeHTTP(w, httptest.NewRequest("GET", path+"?lang=en", nil))
 		if w.Code != 200 || strings.Contains(w.Body.String(), "Coba Lagi") {
 			t.Fatal(path, "wrong project copy")
 		}

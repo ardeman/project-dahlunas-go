@@ -28,14 +28,35 @@ func TestRoutes(t *testing.T) {
 }
 
 func TestHomeLanguages(t *testing.T) {
-	rec := httptest.NewRecorder()
-	Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
-	if got := rec.Header().Get("Content-Type"); got != "text/html; charset=utf-8" {
-		t.Errorf("Content-Type = %q, want HTML with UTF-8", got)
-	}
-	for _, text := range []string{`lang="id"`, "Pembayaran untuk proyek Ardeman.", `lang="en"`, "Payments for Ardeman's projects.", `href="/static/icon.svg"`} {
-		if !strings.Contains(rec.Body.String(), text) {
-			t.Errorf("homepage missing %q", text)
+	for _, tc := range []struct {
+		target, acceptLanguage string
+		want, unwanted         []string
+	}{
+		{"/", "", []string{`<html lang="id">`, "Pembayaran untuk proyek Ardeman.", `href="/terms"`, `href="?lang=en"`}, []string{"Payments for Ardeman&#39;s projects."}},
+		{"/", "en-US,en;q=0.9,id;q=0.8", []string{`<html lang="en">`, "Payments for Ardeman&#39;s projects.", `href="/terms"`}, []string{"Pembayaran untuk proyek Ardeman."}},
+		{"/?lang=en", "", []string{`<html lang="en">`, "Payments for Ardeman&#39;s projects.", `href="/terms?lang=en"`}, nil},
+		{"/?lang=id", "en", []string{`<html lang="id">`, "Pembayaran untuk proyek Ardeman.", `href="/terms?lang=id"`}, nil},
+		{"/?lang=fr", "", []string{`<html lang="id">`, `href="/terms"`}, nil},
+	} {
+		r := httptest.NewRequest(http.MethodGet, tc.target, nil)
+		if tc.acceptLanguage != "" {
+			r.Header.Set("Accept-Language", tc.acceptLanguage)
+		}
+		rec := httptest.NewRecorder()
+		Handler().ServeHTTP(rec, r)
+		if got := rec.Header().Get("Content-Type"); got != "text/html; charset=utf-8" {
+			t.Errorf("%s: Content-Type = %q, want HTML with UTF-8", tc.target, got)
+		}
+		body := rec.Body.String()
+		for _, text := range tc.want {
+			if !strings.Contains(body, text) {
+				t.Errorf("%s (%q) missing %q", tc.target, tc.acceptLanguage, text)
+			}
+		}
+		for _, text := range tc.unwanted {
+			if strings.Contains(body, text) {
+				t.Errorf("%s (%q) shows %q", tc.target, tc.acceptLanguage, text)
+			}
 		}
 	}
 }
