@@ -1,6 +1,6 @@
 # Dahlunas
 
-One checkout for all of Ardeman's own projects. A buyer pays through a payment gateway (Xendit first), the gateway's webhook tells Dahlunas, and Dahlunas sends back what was bought: for offline apps such as Coba Lagi, a signed unlock code the app checks without going online.
+One checkout for all of Ardeman's own projects. A buyer picks a product in Dahlunas's own shop and pays there through a payment gateway (Midtrans first), the gateway's webhook tells Dahlunas, and Dahlunas sends back what was bought: for offline apps such as Coba Lagi, a signed unlock code the app checks without going online.
 
 Go (standard library first) with htmx pages, running on Cloud Run behind Firebase Hosting.
 
@@ -39,15 +39,15 @@ The starter serves a bilingual homepage at `/`, a health check at `/healthz`, an
 
 1. **Code format:** [version 1](docs/code-format.md) carries project, product, id and date, signed with Ed25519, in 148 characters for copy/paste or QR scanning. `internal/unlock` makes and checks it, tested against the documented fixture.
 2. **Minting:** `cmd/mint` makes a project's signing key (the seed goes to a file for Secret Manager, never to the screen) and codes by hand, for orders before the webhook exists.
-3. **Xendit:** create payment links per project and product; receive the payment webhook, check its token, make the code and email it to the buyer. A payment must never send two codes, even when the webhook comes twice.
+3. **Shop and Midtrans:** the shop on Dahlunas's own domain, which Midtrans reviews before live payments: each product described with its price in rupiah, terms, a refund policy and contact details, and checkout on the same domain (Snap's pop-up; Midtrans rejects a checkout that sends the buyer to another site). The webhook (Midtrans' HTTP notification) is checked by its signature, then the code is made, shown on the "paid" page and emailed. A payment must never send two codes, even when the webhook comes twice. QRIS is the main method (0.7%; payable from any e-wallet or bank app); GoPay costs 2%, cards 2.9% + Rp2.000 and virtual accounts Rp4.000 flat, so those show only above a minimum price. The individual account ("Registrasi perorangan") was submitted on 2026-10-26; build against the sandbox until it is approved.
 4. **Projects:** per-project config (products, prices, key, email wording in Indonesian and English).
-5. **Worldwide:** international cards through Xendit if the individual account allows them, else a second gateway behind the same interface.
+5. **Worldwide:** Lemon Squeezy (merchant of record, accepts individuals, prices in dollars) as a second gateway behind the same interface; it handles foreign tax on its sales. Xendit can join once there is a company (it accepts only legal entities).
 6. **Ready for a rush** (traffic stays small, since apps check codes offline; these are what break first):
    - Email codes through a real sender (Resend, Postmark or SES) on our domain, and show the code on the "paid" page too.
    - Rate-limit checkout and guard it against bots (Turnstile or App Check).
-   - One code per payment, however often Xendit retries the webhook.
+   - One code per payment, however often a gateway retries the webhook (keyed by gateway and payment id).
    - Card fraud and chargebacks: keep amounts small; codes checked offline can't be taken back.
-   - Xendit may ask for more documents as volume grows; taxes (NPWP, VAT abroad).
+   - Midtrans may ask for more documents as volume grows; taxes (NPWP; VAT abroad unless a merchant of record handles it).
 
 ## License
 
