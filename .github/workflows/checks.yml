@@ -16,17 +16,36 @@ env:
 jobs:
   checks:
     runs-on: ubuntu-latest
+    outputs:
+      deploy: ${{ steps.changes.outputs.deploy }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
           cache: false
       - name: Check formatting, vet, and tests
         run: test -z "$(gofmt -l .)" && go vet ./... && go test ./...
+      - name: Decide whether the push changes the service
+        id: changes
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          # Docs, Hosting and CI files never reach the Cloud Run image. An unknown
+          # previous commit (first or forced push) always deploys.
+          if git cat-file -e "$BEFORE^{commit}" 2>/dev/null &&
+            ! git diff --name-only "$BEFORE" HEAD |
+              grep -qvE '\.md$|^(docs|public|\.github)/|^(LICENSE|firebase\.json|\.gitignore)$'; then
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          fi
 
   deploy-development:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: needs.checks.outputs.deploy == 'true'
     needs: checks
     runs-on: ubuntu-latest
     concurrency: deploy-development

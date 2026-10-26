@@ -32,7 +32,7 @@ A change is done only when the **Checks** command in `README.md` passes. If you 
 
 Record architectural choices here as one line each: date, decision, reason.
 
-- 2026-10-26: GitHub Actions deploys both Cloud Run services after the checks pass on `main`, development automatically and production after the owner's approval in a GitHub environment, signing in through Workload Identity Federation as a narrow deployer account; a manual deploy was forgotten once, and no long-lived Google key may sit in GitHub. Firebase Hosting stays a manual deploy, since its rewrite rarely changes.
+- 2026-10-26: GitHub Actions deploys both Cloud Run services after the checks pass on `main`, development automatically and production after the owner's approval in a GitHub environment, signing in through Workload Identity Federation as a narrow deployer account; a manual deploy was forgotten once, and no long-lived Google key may sit in GitHub. Pushes that change only docs, Hosting or CI files skip both deploys. Firebase Hosting stays a manual deploy, since its rewrite rarely changes.
 
 - 2026-10-26: Pages look like an Indonesian receipt: white paper, true black, one stamp red, self-hosted Archivo (OFL, no third-party font requests that would expose buyer IPs), dashed rules only between line items, and a single "LUNAS" stamp as the memorable element; avoids generic generated-site tells (gradient washes, shadowed rounded cards, uppercase eyebrows).
 
