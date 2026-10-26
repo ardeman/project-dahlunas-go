@@ -4,11 +4,39 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Dahlunas</title>
+  <link rel="stylesheet" href="/static/shop.css">
   <script src="/static/htmx.min.js" defer></script>
 </head>
 <body>
+  <header><a href="/">Dahlunas</a><nav><a href="/terms">Ketentuan / Terms</a><a href="/privacy">Privasi / Privacy</a></nav></header>
+  <main>
   <h1>Dahlunas</h1>
   <p>Pembayaran untuk proyek Ardeman.</p>
   <p lang="en">Payments for Ardeman's projects.</p>
+  {{if .Shop}}
+  {{if not .Production}}<p class="notice">Sandbox — pembayaran percobaan, tanpa uang sungguhan. <span lang="en">Test payments, no real money.</span></p>{{end}}
+  <section aria-labelledby="product-title">
+    <p class="eyebrow">UNTUK ORANG TUA / FOR PARENTS</p>
+    <h2 id="product-title">Dukung Coba Lagi <span lang="en">/ Support Coba Lagi</span></h2>
+    <p>Kode sponsor untuk versi GitHub. <span lang="en">A sponsor code for GitHub builds.</span></p>
+    <p>Hingga enam pemain dan laporan perkembangan. Semua pilihan membuka fitur yang sama.</p>
+    <p lang="en">Up to six players and progress reports. Every option unlocks the same features.</p>
+    <p>Kode ini tidak berlaku di versi App Store atau Google Play. <span lang="en">These codes are for GitHub builds, not App Store or Google Play builds.</span></p>
+    <form method="post" action="/checkout">
+      <input type="hidden" name="csrf" value="{{.CSRF}}">
+      <fieldset><legend>Pilih dukungan / Choose your support</legend><div class="choices">
+      {{range $index, $product := .Shop.Products}}
+      <label class="choice"><input type="radio" name="product" value="{{.Slug}}" {{if eq $index 0}}checked{{end}} required> Rp {{.Price}}</label>
+      {{end}}</div></fieldset>
+      <label for="email">Email untuk menerima kode / Email for your code</label>
+      <input type="email" id="email" name="email" autocomplete="email" maxlength="254" required placeholder="nama@example.com">
+      <label class="consent"><input type="checkbox" name="accept" value="yes" required><span>Saya menyetujui <a href="/terms">ketentuan</a>, <a href="/refunds">kebijakan pengembalian dana</a>, dan <a href="/privacy">privasi</a>.<br><span lang="en">I agree to the terms, refund policy, and privacy policy.</span></span></label>
+      <button type="submit">Lanjut ke pembayaran / Continue to payment</button>
+      <p class="muted">Bayar dengan QRIS. Kode ditampilkan setelah pembayaran dikonfirmasi dan dikirim melalui email.<br><span lang="en">Pay with QRIS. Your code appears after payment is confirmed and is sent by email.</span></p>
+    </form>
+  </section>
+  {{else}}<p>Belum menerima pembayaran. <span lang="en">Checkout is not open yet.</span></p>{{end}}
+  </main>
+  {{template "footer" .}}
 </body>
 </html>

@@ -1,0 +1,20 @@
+<!doctype html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Kebijakan / Policies · Dahlunas</title><link rel="stylesheet" href="/static/shop.css"></head>
+<body><header><a href="/">Dahlunas</a></header><main>
+{{if eq .Path "/terms"}}
+<h1>Ketentuan / Terms</h1>
+<p>Dahlunas adalah toko Ardeman untuk proyek milik Ardeman sendiri. Pembelian kode Coba Lagi bersifat satu kali dan membuka fitur sponsor di versi GitHub. Kode tidak berlaku di versi App Store atau Google Play. Semua pilihan harga membuka fitur yang sama.</p>
+<p lang="en">Dahlunas is Ardeman's shop for Ardeman's own projects. A Coba Lagi code is a one-time purchase that unlocks sponsor features in GitHub builds. Codes do not apply to App Store or Google Play builds. All price options unlock the same features.</p>
+<p>Periksa versi aplikasi dan alamat email sebelum membayar. Kode tersedia di halaman pesanan setelah konfirmasi pembayaran dan dikirim melalui email. Pembayaran diproses oleh Midtrans; Dahlunas tidak menerima detail kartu atau rekening Anda.</p>
+<p lang="en">Check your app version and email address before paying. Your code becomes available on the order page after payment confirmation and is sent by email. Midtrans processes the payment; Dahlunas does not receive your card or bank account details.</p>
+{{else if eq .Path "/privacy"}}
+<h1>Privasi / Privacy</h1>
+<p>Dahlunas menyimpan alamat email, nomor pesanan, produk, status pembayaran, dan kode untuk mengirimkan pembelian dan membantu pembeli. Email dan informasi pesanan dikirim ke Midtrans untuk pembayaran dan ke Resend untuk pengiriman kode. Pesanan disimpan di Google Cloud Firestore. Kami tidak meminta nama anak atau data permainan.</p>
+<p lang="en">Dahlunas stores your email, order number, product, payment status, and code to deliver your purchase and provide support. Email and order information are sent to Midtrans for payment and Resend for code delivery. Orders are stored in Google Cloud Firestore. We do not request children's names or gameplay data.</p>
+<p>Coba Lagi memeriksa kode secara offline. Aplikasi tidak menghubungi Dahlunas. Tautan pesanan bersifat pribadi; jangan bagikan. Hubungi kami untuk pertanyaan atau permintaan penghapusan data pembelian.</p>
+<p lang="en">Coba Lagi verifies codes offline. The app does not contact Dahlunas. Your order link is private; do not share it. Contact us with questions or requests to delete purchase data.</p>
+{{else}}
+<h1>Pengembalian dana / Refunds</h1>
+{{if .RefundID}}<p class="policy-text">{{.RefundID}}</p><p class="policy-text" lang="en">{{.RefundEN}}</p>{{else}}<p>Penjualan belum dibuka. Kebijakan akan tersedia sebelum pembelian diaktifkan.</p><p lang="en">Sales are not open. The policy will be available before checkout is enabled.</p>{{end}}
+{{end}}
+{{if .Support}}<p>Hubungi / Contact: <a href="mailto:{{.Support}}">{{.Support}}</a></p>{{end}}
+</main>{{template "footer" .}}</body></html>

@@ -1,0 +1,238 @@
+package shop
+
+import (
+	"context"
+	"crypto/ed25519"
+	"errors"
+	"strconv"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/ardeman/project-dahlunas-go/internal/payment"
+	"github.com/ardeman/project-dahlunas-go/internal/unlock"
+)
+
+type memoryStore struct {
+	mu      sync.Mutex
+	orders  map[string]Order
+	version int
+}
+
+func (m *memoryStore) Create(_ context.Context, o Order) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.orders[o.ID]; ok {
+		return ErrConflict
+	}
+	m.version++
+	o.Revision = strconv.Itoa(m.version)
+	m.orders[o.ID] = o
+	return nil
+}
+func (m *memoryStore) Get(_ context.Context, id string) (Order, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	o, ok := m.orders[id]
+	if !ok {
+		return Order{}, ErrNotFound
+	}
+	return o, nil
+}
+func (m *memoryStore) Save(_ context.Context, o Order) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	old, ok := m.orders[o.ID]
+	if !ok || old.Revision != o.Revision {
+		return ErrConflict
+	}
+	m.version++
+	o.Revision = strconv.Itoa(m.version)
+	m.orders[o.ID] = o
+	return nil
+}
+
+type gateway struct {
+	status   payment.Status
+	checkout payment.Checkout
+	err      error
+}
+
+func (g *gateway) Create(_ context.Context, c payment.Checkout) (payment.Session, error) {
+	g.checkout = c
+	return payment.Session{Token: "token"}, g.err
+}
+func (g *gateway) Notification(context.Context, []byte) (payment.Status, error) {
+	return g.status, g.err
+}
+
+type mailer struct {
+	mu    sync.Mutex
+	calls int
+	fail  bool
+	code  string
+}
+
+func (m *mailer) Send(_ context.Context, o Order) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.calls++
+	m.code = o.Code
+	if m.fail {
+		return errors.New("mail failed")
+	}
+	return nil
+}
+
+func setup(t *testing.T) (*Service, *gateway, *mailer, Order) {
+	t.Helper()
+	key := ed25519.NewKeyFromSeed(make([]byte, 32))
+	g, m := &gateway{}, &mailer{}
+	s := &Service{Store: &memoryStore{orders: map[string]Order{}}, Gateway: g, Mailer: m, Products: CobaLagi(), BaseURL: "https://shop.example", SigningKey: func(uint16, uint8) (ed25519.PrivateKey, error) { return key, nil }, Now: func() time.Time { return time.Date(2026, 10, 26, 0, 0, 0, 0, time.UTC) }}
+	o, err := s.Create(context.Background(), "coba-lagi-1", "buyer@example.com")
+	if err != nil {
+		t.Fatal(err)
+	}
+	g.status = payment.Status{ID: o.ID, Amount: 5000, State: "settlement", Paid: true}
+	return s, g, m, o
+}
+
+func TestCheckoutUsesCatalogAndPrivateLink(t *testing.T) {
+	s, g, _, o := setup(t)
+	if g.checkout.Amount != 5000 || g.checkout.FinishURL != s.BaseURL+o.Path() || len(o.ViewToken) != 64 {
+		t.Fatal("invalid checkout")
+	}
+	if _, err := s.View(context.Background(), o.ID, "wrong"); !errors.Is(err, ErrNotFound) {
+		t.Fatal(err)
+	}
+	if _, err := s.View(context.Background(), o.ID, o.ViewToken); err != nil {
+		t.Fatal(err)
+	}
+	for _, input := range []struct{ slug, email string }{{"missing", "buyer@example.com"}, {"coba-lagi-1", "bad"}, {"coba-lagi-1", "Buyer <buyer@example.com>"}, {"coba-lagi-1", "a@example.com\r\nBcc:other@example.com"}} {
+		if _, err := s.Create(context.Background(), input.slug, input.email); !errors.Is(err, ErrInput) {
+			t.Fatalf("input=%+v error=%v", input, err)
+		}
+	}
+}
+
+func TestConcurrentNotificationsMakeOneCodeAndEmail(t *testing.T) {
+	s, _, m, o := setup(t)
+	var wg sync.WaitGroup
+	for i := 0; i < 20; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			err := s.Notify(context.Background(), nil)
+			if err != nil && !errors.Is(err, ErrRetry) && !errors.Is(err, ErrConflict) {
+				t.Error(err)
+			}
+		}()
+	}
+	wg.Wait()
+	if err := s.Notify(context.Background(), nil); err != nil {
+		t.Fatal(err)
+	}
+	saved, _ := s.Store.Get(context.Background(), o.ID)
+	if !saved.Paid || !saved.EmailSent || m.calls != 1 || saved.Code != m.code {
+		t.Fatalf("paid=%v sent=%v calls=%d", saved.Paid, saved.EmailSent, m.calls)
+	}
+	decoded, err := unlock.Parse(saved.Code)
+	if err != nil || decoded.Project != 1 || decoded.Product != 1 {
+		t.Fatalf("code=%+v err=%v", decoded, err)
+	}
+	key, _ := s.SigningKey(1, 1)
+	canonical, err := unlock.Sign(key, decoded)
+	if err != nil || canonical != saved.Code {
+		t.Fatal("code signature changed")
+	}
+}
+
+func TestPendingMismatchAndGatewayFailureNeverFulfill(t *testing.T) {
+	for _, mode := range []string{"pending", "mismatch", "provider"} {
+		t.Run(mode, func(t *testing.T) {
+			s, g, m, o := setup(t)
+			switch mode {
+			case "pending":
+				g.status.Paid = false
+				g.status.State = "pending"
+			case "mismatch":
+				g.status.Amount = 1
+			case "provider":
+				g.err = errors.New("invalid signature")
+			}
+			err := s.Notify(context.Background(), nil)
+			if mode != "pending" && err == nil {
+				t.Fatal("expected error")
+			}
+			saved, _ := s.Store.Get(context.Background(), o.ID)
+			if saved.Paid || saved.Code != "" || m.calls != 0 {
+				t.Fatal("unpaid order fulfilled")
+			}
+		})
+	}
+}
+
+func TestEmailFailureKeepsCodeAndRetriesWithinWindow(t *testing.T) {
+	s, g, m, o := setup(t)
+	m.fail = true
+	if err := s.Notify(context.Background(), nil); !errors.Is(err, ErrRetry) {
+		t.Fatal(err)
+	}
+	saved, _ := s.Store.Get(context.Background(), o.ID)
+	code := saved.Code
+	if !saved.Paid || code == "" || saved.EmailSent {
+		t.Fatal("code was lost on email failure")
+	}
+	if err := s.Notify(context.Background(), nil); !errors.Is(err, ErrRetry) {
+		t.Fatal(err)
+	}
+	if m.calls != 1 {
+		t.Fatal("lease did not prevent duplicate sends")
+	}
+	now := s.now()
+	s.Now = func() time.Time { return now.Add(2 * time.Minute) }
+	m.fail = false
+	if err := s.Notify(context.Background(), nil); err != nil {
+		t.Fatal(err)
+	}
+	saved, _ = s.Store.Get(context.Background(), o.ID)
+	if saved.Code != code || !saved.EmailSent || m.calls != 2 {
+		t.Fatal("retry changed code")
+	}
+	// Later stale notifications must not overwrite a fulfilled order.
+	g.status.Paid = false
+	g.status.State = "pending"
+	if err := s.Notify(context.Background(), nil); err != nil {
+		t.Fatal(err)
+	}
+	saved, _ = s.Store.Get(context.Background(), o.ID)
+	if !saved.Paid || saved.Code != code || m.calls != 2 {
+		t.Fatal("stale status undid fulfillment")
+	}
+}
+
+func TestEmailDoesNotRetryBeyondDedupeWindow(t *testing.T) {
+	s, _, m, _ := setup(t)
+	m.fail = true
+	s.Notify(context.Background(), nil)
+	now := s.now()
+	s.Now = func() time.Time { return now.Add(23 * time.Hour) }
+	if err := s.Notify(context.Background(), nil); !errors.Is(err, ErrRetry) {
+		t.Fatal(err)
+	}
+	if m.calls != 1 {
+		t.Fatal("late retry risked duplicate email")
+	}
+}
+
+func TestMissingSigningKeyPreventsCheckout(t *testing.T) {
+	s, g, _, _ := setup(t)
+	g.checkout = payment.Checkout{}
+	s.SigningKey = func(uint16, uint8) (ed25519.PrivateKey, error) { return nil, errors.New("key unavailable") }
+	if _, err := s.Create(context.Background(), "coba-lagi-1", "buyer@example.com"); err == nil {
+		t.Fatal("missing key accepted")
+	}
+	if g.checkout.ID != "" {
+		t.Fatal("provider called without signing key")
+	}
+}

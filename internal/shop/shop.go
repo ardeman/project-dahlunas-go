@@ -1,0 +1,265 @@
+// Package shop owns orders, payment confirmation and unlock-code delivery.
+package shop
+
+import (
+	"context"
+	"crypto/ed25519"
+	"crypto/rand"
+	"crypto/subtle"
+	"encoding/hex"
+	"errors"
+	"fmt"
+	"net/mail"
+	"strings"
+	"time"
+
+	"github.com/ardeman/project-dahlunas-go/internal/payment"
+	"github.com/ardeman/project-dahlunas-go/internal/unlock"
+)
+
+var (
+	ErrNotFound = errors.New("shop: order not found")
+	ErrConflict = errors.New("shop: concurrent update")
+	ErrInput    = errors.New("shop: invalid input")
+	ErrRetry    = errors.New("shop: delivery pending")
+)
+
+type Product struct {
+	Slug, NameID, NameEN, DescriptionID, DescriptionEN string
+	Price                                              int64
+	Project, Product                                   uint16
+	KeyID                                              uint8
+}
+
+// CobaLagi uses the prices and entitlement documented by the app repository.
+// All three support amounts unlock the same sponsor plan in GitHub builds.
+func CobaLagi() []Product {
+	var products []Product
+	for i, price := range []int64{5000, 19000, 49000} {
+		products = append(products, Product{
+			Slug: fmt.Sprintf("coba-lagi-%d", i+1), NameID: "Sponsor Coba Lagi", NameEN: "Coba Lagi sponsor",
+			DescriptionID: "Kode untuk versi GitHub: hingga enam pemain dan laporan perkembangan. Semua pilihan membuka fitur yang sama.",
+			DescriptionEN: "Code for GitHub builds: up to six players and progress reports. Every option unlocks the same features.",
+			Price:         price, Project: 1, Product: 1, KeyID: 1,
+		})
+	}
+	return products
+}
+
+type Order struct {
+	ID, ViewToken, Email          string
+	Product                       Product
+	Created                       time.Time
+	SnapToken, Code, State        string
+	Paid                          bool
+	EmailSent                     bool
+	EmailFirstAttempt, EmailLease time.Time
+	// Revision is the store's compare-and-swap token, never part of the record.
+	Revision string `json:"-"`
+}
+
+// Store persists an order atomically. Save must compare Revision, returning
+// ErrConflict on stale writes; Create must never overwrite an existing order.
+type Store interface {
+	Create(context.Context, Order) error
+	Get(context.Context, string) (Order, error)
+	Save(context.Context, Order) error
+}
+
+type Mailer interface {
+	Send(context.Context, Order) error
+}
+
+type Service struct {
+	Store      Store
+	Gateway    payment.Gateway
+	Mailer     Mailer
+	Products   []Product
+	BaseURL    string
+	SigningKey func(uint16, uint8) (ed25519.PrivateKey, error)
+	Now        func() time.Time
+}
+
+func (s *Service) now() time.Time {
+	if s.Now != nil {
+		return s.Now().UTC()
+	}
+	return time.Now().UTC()
+}
+
+func randomHex(n int) (string, error) {
+	b := make([]byte, n)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(b), nil
+}
+
+func (s *Service) Create(ctx context.Context, slug, email string) (Order, error) {
+	address, err := mail.ParseAddress(email)
+	if err != nil || address.Address != email || len(email) > 254 || strings.ContainsAny(email, "\r\n") {
+		return Order{}, ErrInput
+	}
+	var product Product
+	for _, p := range s.Products {
+		if p.Slug == slug {
+			product = p
+			break
+		}
+	}
+	if product.Price <= 0 {
+		return Order{}, ErrInput
+	}
+	// Validate the key before accepting a payment.
+	if _, err := s.SigningKey(product.Project, product.KeyID); err != nil {
+		return Order{}, errors.New("shop: signing unavailable")
+	}
+	id, err := randomHex(16)
+	if err != nil {
+		return Order{}, err
+	}
+	token, err := randomHex(32)
+	if err != nil {
+		return Order{}, err
+	}
+	o := Order{ID: id, ViewToken: token, Email: email, Product: product, Created: s.now(), State: "pending"}
+	if err := s.Store.Create(ctx, o); err != nil {
+		return Order{}, err
+	}
+	session, err := s.Gateway.Create(ctx, payment.Checkout{ID: id, Email: email, Name: product.NameEN, Amount: product.Price, FinishURL: s.BaseURL + o.Path()})
+	if err != nil {
+		return Order{}, err
+	}
+	// A notification may race the Snap response. Preserve payment/delivery fields.
+	for i := 0; i < 8; i++ {
+		current, err := s.Store.Get(ctx, id)
+		if err != nil {
+			return Order{}, err
+		}
+		current.SnapToken = session.Token
+		err = s.Store.Save(ctx, current)
+		if errors.Is(err, ErrConflict) {
+			continue
+		}
+		return current, err
+	}
+	return Order{}, ErrConflict
+}
+
+func (o Order) Path() string { return "/orders/" + o.ID + "/" + o.ViewToken }
+
+func (s *Service) View(ctx context.Context, id, token string) (Order, error) {
+	if len(id) != 32 || len(token) != 64 {
+		return Order{}, ErrNotFound
+	}
+	o, err := s.Store.Get(ctx, id)
+	if err != nil {
+		return Order{}, err
+	}
+	if subtle.ConstantTimeCompare([]byte(token), []byte(o.ViewToken)) != 1 {
+		return Order{}, ErrNotFound
+	}
+	return o, nil
+}
+
+func (s *Service) Notify(ctx context.Context, data []byte) error {
+	status, err := s.Gateway.Notification(ctx, data)
+	if err != nil {
+		return err
+	}
+	for i := 0; i < 8; i++ {
+		o, err := s.Store.Get(ctx, status.ID)
+		if err != nil {
+			return err
+		}
+		if status.Amount != o.Product.Price {
+			return errors.New("shop: payment amount mismatch")
+		}
+		if o.Paid {
+			return s.Deliver(ctx, o.ID)
+		}
+		o.State = status.State
+		if status.Paid {
+			key, err := s.SigningKey(o.Product.Project, o.Product.KeyID)
+			if err != nil {
+				return errors.New("shop: signing unavailable")
+			}
+			// The code ID and issue date are fixed at order creation. Even racing
+			// notifications generate exactly the same signed code.
+			id, err := hex.DecodeString(o.ID)
+			if err != nil || len(id) != 16 {
+				return errors.New("shop: invalid stored order")
+			}
+			day, err := unlock.IssuedDay(o.Created)
+			if err != nil {
+				return err
+			}
+			code := unlock.Code{Version: unlock.Version, KeyID: o.Product.KeyID, Project: o.Product.Project, Product: o.Product.Product, IssuedDay: day}
+			copy(code.ID[:], id)
+			o.Code, err = unlock.Sign(key, code)
+			if err != nil {
+				return err
+			}
+			o.Paid = true
+		}
+		err = s.Store.Save(ctx, o)
+		if errors.Is(err, ErrConflict) {
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		if o.Paid {
+			return s.Deliver(ctx, o.ID)
+		}
+		return nil
+	}
+	return ErrConflict
+}
+
+// Deliver uses a durable lease and a stable provider idempotency key. Retries
+// stop before the provider's 24-hour deduplication expires; ambiguous late
+// deliveries require operator review instead of risking a duplicate email.
+func (s *Service) Deliver(ctx context.Context, id string) error {
+	for i := 0; i < 8; i++ {
+		o, err := s.Store.Get(ctx, id)
+		if err != nil {
+			return err
+		}
+		if !o.Paid || o.EmailSent {
+			return nil
+		}
+		now := s.now()
+		if o.EmailLease.After(now) || (!o.EmailFirstAttempt.IsZero() && now.Sub(o.EmailFirstAttempt) >= 23*time.Hour) {
+			return ErrRetry
+		}
+		if o.EmailFirstAttempt.IsZero() {
+			o.EmailFirstAttempt = now
+		}
+		o.EmailLease = now.Add(time.Minute)
+		if err := s.Store.Save(ctx, o); errors.Is(err, ErrConflict) {
+			continue
+		} else if err != nil {
+			return err
+		}
+		if err := s.Mailer.Send(ctx, o); err != nil {
+			return ErrRetry
+		}
+		// Preserve concurrent writes after the external side effect.
+		for j := 0; j < 8; j++ {
+			current, err := s.Store.Get(ctx, id)
+			if err != nil {
+				return err
+			}
+			current.EmailSent = true
+			current.EmailLease = time.Time{}
+			err = s.Store.Save(ctx, current)
+			if errors.Is(err, ErrConflict) {
+				continue
+			}
+			return err
+		}
+		return ErrConflict
+	}
+	return ErrConflict
+}

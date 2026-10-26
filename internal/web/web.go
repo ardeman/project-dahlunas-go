@@ -6,6 +6,8 @@ import (
 	"html/template"
 	"io/fs"
 	"net/http"
+
+	"github.com/ardeman/project-dahlunas-go/internal/shop"
 )
 
 //go:embed templates/*.html
@@ -17,7 +19,18 @@ var static embed.FS
 var pages = template.Must(template.ParseFS(templates, "templates/*.html"))
 
 // Handler returns the routes of the service.
-func Handler() http.Handler {
+type Options struct {
+	Shop                        *shop.Service
+	ClientKey                   string
+	Production                  bool
+	Support, RefundID, RefundEN string
+}
+
+func Handler(options ...Options) http.Handler {
+	var config Options
+	if len(options) > 0 {
+		config = options[0]
+	}
 	mux := http.NewServeMux()
 
 	assets, err := fs.Sub(static, "static")
@@ -30,12 +43,22 @@ func Handler() http.Handler {
 		w.Write([]byte("ok"))
 	})
 
-	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := pages.ExecuteTemplate(w, "home.html", nil); err != nil {
-			http.Error(w, "page failed", http.StatusInternalServerError)
-		}
-	})
+	if config.Shop != nil {
+		mux.HandleFunc("GET /{$}", withCheckoutForm(config))
+	} else {
+		mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			if err := pages.ExecuteTemplate(w, "home.html", config); err != nil {
+				http.Error(w, "page failed", http.StatusInternalServerError)
+			}
+		})
+	}
+	registerShop(mux, config)
 
-	return mux
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Referrer-Policy", "no-referrer")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		mux.ServeHTTP(w, r)
+	})
 }
