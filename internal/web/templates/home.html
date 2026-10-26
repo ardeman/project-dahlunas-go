@@ -9,11 +9,10 @@
   {{if .TurnstileSiteKey}}<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>{{end}}
 </head>
 <body>
-  <header><a href="/">Dahlunas</a><nav><a href="/terms">Ketentuan / Terms</a><a href="/privacy">Privasi / Privacy</a></nav></header>
+  <header><a href="/" class="brand">Dahlunas</a><nav><a href="/terms">Ketentuan / Terms</a><a href="/privacy">Privasi / Privacy</a></nav></header>
   <main>
-  <h1>Dahlunas</h1>
-  <p>Pembayaran untuk proyek Ardeman.</p>
-  <p lang="en">Payments for Ardeman's projects.</p>
+  <h1>Pembayaran untuk proyek Ardeman.</h1>
+  <p class="lead" lang="en">Payments for Ardeman's projects.</p>
   {{if .Shop}}
   {{if not .Production}}<p class="notice">Sandbox — pembayaran percobaan, tanpa uang sungguhan. <span lang="en">Test payments, no real money.</span></p>{{end}}
   <section aria-labelledby="product-title">
@@ -22,7 +21,7 @@
       <input type="hidden" name="csrf" value="{{.CSRF}}">
       <fieldset><legend>Produk / Product</legend><div class="choices">
       {{range $index, $product := .Shop.Products}}
-      <label class="choice"><input type="radio" name="product" value="{{.Slug}}" {{if eq $index 0}}checked{{end}} required> {{.NameID}} / {{.NameEN}} · {{.FormattedPrice}}<br>{{if eq .GatewayName "lemonsqueezy"}}Lemon Squeezy · USD{{else}}Midtrans · QRIS{{end}}<br>{{.DescriptionID}}<br><span lang="en">{{.DescriptionEN}}</span></label>
+      <label class="choice"><input type="radio" name="product" value="{{.Slug}}" {{if eq $index 0}}checked{{end}} required><span class="item"><strong>{{.NameID}} / {{.NameEN}}</strong> <span class="price">{{.FormattedPrice}}</span><span class="detail">{{.DescriptionID}} <span lang="en">{{.DescriptionEN}}</span> <small>{{if eq .GatewayName "lemonsqueezy"}}Lemon Squeezy (USD){{else}}QRIS lewat / via Midtrans{{end}}</small></span></span></label>
       {{end}}</div></fieldset>
       <label for="email">Email untuk menerima kode / Email for your code</label>
       <input type="email" id="email" name="email" autocomplete="email" maxlength="254" required placeholder="nama@example.com">
@@ -32,7 +31,7 @@
       <p class="muted">Metode pembayaran mengikuti produk pilihan Anda. Pajak yang berlaku ditampilkan saat pembayaran. Kode tersedia setelah konfirmasi pembayaran dan dikirim melalui email.<br><span lang="en">Payment methods depend on your selected product. Applicable taxes are shown at checkout. Your code appears after payment confirmation and is sent by email.</span></p>
     </form>
   </section>
-  {{else}}<p>Belum menerima pembayaran. <span lang="en">Checkout is not open yet.</span></p>{{end}}
+  {{else}}<p class="closed">Belum menerima pembayaran. <span lang="en">Checkout is not open yet.</span></p>{{end}}
   </main>
   {{template "footer" .}}
 </body>

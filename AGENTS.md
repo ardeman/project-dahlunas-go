@@ -32,6 +32,8 @@ A change is done only when the **Checks** command in `README.md` passes. If you 
 
 Record architectural choices here as one line each: date, decision, reason.
 
+- 2026-10-26: Pages look like an Indonesian receipt: white paper, true black, one stamp red, self-hosted Archivo (OFL, no third-party font requests that would expose buyer IPs), dashed rules only between line items, and a single "LUNAS" stamp as the memorable element; avoids generic generated-site tells (gradient washes, shadowed rounded cards, uppercase eyebrows).
+
 - 2026-10-26: Email delivery is retried by a Cloud Scheduler call to a bearer-token endpoint that queries a top-level `deliveryPending` Firestore field, with fixed log lines for log-based alerts; Cloud Run has no background worker, and gateway notifications alone may stop before a stuck email is sent.
 
 - 2026-10-26: The delivery sweep also reconciles unpaid orders through an optional gateway `Checker` (Midtrans status API), queried by a top-level `awaitingPayment` field after 10 minutes and abandoned after 48 hours; a lost notification must not leave a paid order unfulfilled, and Lemon Squeezy has no lookup by our order id.

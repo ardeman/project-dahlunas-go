@@ -3,11 +3,12 @@
 <link rel="stylesheet" href="/static/shop.css"><script src="/static/htmx.min.js" defer></script>
 {{if eq .Order.Product.GatewayName "midtrans"}}{{if .Production}}<script src="https://app.midtrans.com/snap/snap.js" data-client-key="{{.ClientKey}}" defer></script>{{else}}<script src="https://app.sandbox.midtrans.com/snap/snap.js" data-client-key="{{.ClientKey}}" defer></script>{{end}}{{end}}
 <script src="/static/checkout.js" defer></script></head>
-<body><header><a href="/">Dahlunas</a></header>
+<body><header><a href="/" class="brand">Dahlunas</a></header>
 <main id="order" {{if not .Order.Paid}}hx-get="{{.Order.Path}}" hx-trigger="every 5s" hx-select="#order" hx-swap="outerHTML"{{end}}>
-{{if not .Production}}<p class="notice">Sandbox · Pembayaran percobaan / Test payment</p>{{end}}
-<p class="eyebrow">{{.Order.Product.NameID}} / {{.Order.Product.NameEN}}</p>
+{{if not .Production}}<p class="notice">Sandbox: pembayaran percobaan. <span lang="en">Test payment.</span></p>{{end}}
+<p class="product">{{.Order.Product.NameID}} / {{.Order.Product.NameEN}}</p>
 {{if .Order.Paid}}
+<p class="stamp" aria-hidden="true">Lunas</p>
 <h1>Terima kasih! <span lang="en">/ Thank you!</span></h1>
 <p>Pembayaran {{.Order.Product.FormattedPrice}} telah dikonfirmasi. <span lang="en">Your payment is confirmed.</span></p>
 <label for="code">Kode / Code</label><textarea id="code" readonly rows="5" spellcheck="false">{{.Order.Code}}</textarea>
