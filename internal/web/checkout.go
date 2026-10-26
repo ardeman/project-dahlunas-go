@@ -23,13 +23,22 @@ func render(w http.ResponseWriter, p page, name string, data any) {
 	}
 }
 
-// fail answers with plain text in the visitor's language.
+// fail answers with an error page in the visitor's language, keeping the
+// site's navigation.
 func fail(w http.ResponseWriter, p page, id, en string, code int) {
 	p.header(w)
-	http.Error(w, p.T(id, en), code)
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(code)
+	pages.ExecuteTemplate(w, "error.html", struct {
+		page
+		Message string
+	}{p, p.T(id, en)})
 }
 
 func registerShop(mux *http.ServeMux, config Options) {
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		fail(w, newPage(r, config), "Halaman tidak ditemukan.", "Page not found.", http.StatusNotFound)
+	})
 	for _, path := range []string{"/terms", "/privacy", "/refunds"} {
 		mux.HandleFunc("GET "+path, func(w http.ResponseWriter, r *http.Request) {
 			p := newPage(r, config)
@@ -96,7 +105,7 @@ func registerShop(mux *http.ServeMux, config Options) {
 		p := newPage(r, config)
 		o, err := s.View(r.Context(), r.PathValue("id"), r.PathValue("token"))
 		if errors.Is(err, shop.ErrNotFound) {
-			http.NotFound(w, r)
+			fail(w, p, "Halaman tidak ditemukan.", "Page not found.", http.StatusNotFound)
 			return
 		}
 		if err != nil {

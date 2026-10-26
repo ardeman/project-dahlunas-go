@@ -3,6 +3,7 @@ package web
 import (
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/ardeman/project-dahlunas-go/internal/shop"
@@ -31,14 +32,14 @@ func TestChosenLanguageCarriesThroughCheckoutErrors(t *testing.T) {
 	r := httptest.NewRequest(http.MethodPost, "/checkout?lang=en", nil)
 	rec := httptest.NewRecorder()
 	h.ServeHTTP(rec, r)
-	if rec.Code != http.StatusForbidden || rec.Body.String() != "Reload the page.\n" || rec.Header().Get("Content-Language") != "en" {
+	if rec.Code != http.StatusForbidden || !strings.Contains(rec.Body.String(), "<h1>Reload the page.</h1>") || rec.Header().Get("Content-Language") != "en" {
 		t.Fatal(rec.Code, rec.Body.String(), rec.Header())
 	}
 	r = httptest.NewRequest(http.MethodPost, "/checkout", nil)
 	r.Header.Set("Accept-Language", "id")
 	rec = httptest.NewRecorder()
 	h.ServeHTTP(rec, r)
-	if rec.Body.String() != "Muat ulang halaman.\n" || rec.Header().Get("Vary") != "Accept-Language" {
+	if !strings.Contains(rec.Body.String(), "<h1>Muat ulang halaman.</h1>") || rec.Header().Get("Vary") != "Accept-Language" {
 		t.Fatal(rec.Body.String(), rec.Header())
 	}
 }

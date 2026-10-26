@@ -27,6 +27,28 @@ func TestRoutes(t *testing.T) {
 	}
 }
 
+// Every page, error pages included, carries the language selector and the
+// policy links once, in the footer.
+func TestNavigationOnEveryPage(t *testing.T) {
+	h := Handler()
+	for _, path := range []string{"/", "/terms", "/refunds", "/privacy", "/missing"} {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path+"?lang=en", nil))
+		body := rec.Body.String()
+		for _, link := range []string{"/terms?lang=en", "/refunds?lang=en", "/privacy?lang=en"} {
+			if n := strings.Count(body, `href="`+link+`"`); n != 1 {
+				t.Errorf("%s links to %s %d times, want once", path, link, n)
+			}
+		}
+		if !strings.Contains(body, `href="?lang=id"`) || !strings.Contains(body, "<footer>") {
+			t.Errorf("%s lacks the language selector or footer", path)
+		}
+		if current := strings.Count(body, `aria-current="page"`); path != "/" && path != "/missing" && current != 1 {
+			t.Errorf("%s marks the current page %d times, want 1", path, current)
+		}
+	}
+}
+
 func TestHomeLanguages(t *testing.T) {
 	for _, tc := range []struct {
 		target, acceptLanguage string
