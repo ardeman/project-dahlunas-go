@@ -23,6 +23,19 @@ func TestDisabledShopNeedsNoCredentials(t *testing.T) {
 	if r.Code != 200 || !strings.Contains(r.Body.String(), "Belum menerima pembayaran") {
 		t.Fatal(r.Code, r.Body.String())
 	}
+	if !strings.Contains(r.Body.String(), "Sandbox") {
+		t.Fatal("closed sandbox shop lost its band")
+	}
+	t.Setenv("SHOP_PRODUCTION", "true")
+	h, err = Handler()
+	if err != nil {
+		t.Fatal(err)
+	}
+	r = httptest.NewRecorder()
+	h.ServeHTTP(r, httptest.NewRequest("GET", "/", nil))
+	if strings.Contains(r.Body.String(), "Sandbox") {
+		t.Fatal("closed production shop shows the sandbox band")
+	}
 }
 
 func TestEnabledShopRequiresConfiguration(t *testing.T) {

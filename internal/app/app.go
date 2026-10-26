@@ -43,6 +43,12 @@ func Handler() (http.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
+	// Read first: a closed production shop must not show the sandbox band.
+	production, err := productionMode()
+	if err != nil {
+		return nil, err
+	}
+	config.Production = production
 	if !enabled {
 		return web.Handler(config), nil
 	}
@@ -71,10 +77,6 @@ func Handler() (http.Handler, error) {
 		for i := range products {
 			products[i].KeyID = uint8(keyID)
 		}
-	}
-	production, err := productionMode()
-	if err != nil {
-		return nil, err
 	}
 	required := []string{"SHOP_BASE_URL", "SHOP_REFUND_ID", "SHOP_REFUND_EN", "GOOGLE_CLOUD_PROJECT", "RESEND_API_KEY", "RESEND_FROM"}
 	needed := map[string]bool{}
@@ -136,7 +138,6 @@ func Handler() (http.Handler, error) {
 	if config.TaskToken != "" && len(config.TaskToken) < 32 {
 		return nil, errors.New("DAHLUNAS_TASK_TOKEN must be at least 32 characters")
 	}
-	config.Production = production
 	config.ClientKey = os.Getenv("MIDTRANS_CLIENT_KEY")
 	return web.Handler(config), nil
 }
