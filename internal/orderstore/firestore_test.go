@@ -135,6 +135,9 @@ func TestUndeliveredQueriesPendingFlag(t *testing.T) {
 	if !strings.Contains(query, `"collectionId":"orders-sandbox"`) || !strings.Contains(query, `"fieldPath":"deliveryPending"`) {
 		t.Fatal(query)
 	}
+	if _, err := f.Unpaid(context.Background()); err != nil || !strings.Contains(query, `"fieldPath":"awaitingPayment"`) {
+		t.Fatal(query, err)
+	}
 }
 
 func TestSaveWritesDeliveryPendingField(t *testing.T) {
@@ -158,5 +161,12 @@ func TestSaveWritesDeliveryPendingField(t *testing.T) {
 	f.Save(context.Background(), o)
 	if p := written.Fields["deliveryPending"].Boolean; p == nil || *p {
 		t.Fatal("sent order still flagged")
+	}
+	if a := written.Fields["awaitingPayment"].Boolean; a == nil || *a {
+		t.Fatal("paid order awaiting payment")
+	}
+	f.Save(context.Background(), shop.Order{ID: o.ID, State: "pending", Revision: "r2"})
+	if a := written.Fields["awaitingPayment"].Boolean; a == nil || !*a {
+		t.Fatal("pending order not flagged")
 	}
 }

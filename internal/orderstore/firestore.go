@@ -50,8 +50,8 @@ func New(project, token, host string, production bool) (*Firestore, error) {
 	return &Firestore{documents: documents, collection: collection, base: documents + "/" + collection + "/", token: token, emulator: host != "", client: &http.Client{Timeout: 15 * time.Second}}, nil
 }
 
-// The order is one JSON payload; deliveryPending is a separate field so the
-// delivery sweep can query it.
+// The order is one JSON payload; deliveryPending and awaitingPayment are
+// separate fields so the sweep can query them.
 type value struct {
 	String  *string `json:"stringValue,omitempty"`
 	Boolean *bool   `json:"booleanValue,omitempty"`
@@ -105,8 +105,8 @@ func (f *Firestore) request(ctx context.Context, method, id, query string, o *sh
 		if err != nil {
 			return shop.Order{}, err
 		}
-		text, pending := string(payload), o.DeliveryPending()
-		d := document{Fields: map[string]value{"payload": {String: &text}, "deliveryPending": {Boolean: &pending}}}
+		text, pending, awaiting := string(payload), o.DeliveryPending(), o.AwaitingPayment()
+		d := document{Fields: map[string]value{"payload": {String: &text}, "deliveryPending": {Boolean: &pending}, "awaitingPayment": {Boolean: &awaiting}}}
 		b, err := json.Marshal(d)
 		if err != nil {
 			return shop.Order{}, err
@@ -170,9 +170,19 @@ const sweepLimit = 50
 // Undelivered queries paid orders whose email is not confirmed sent. Records
 // written before the deliveryPending field existed are not found.
 func (f *Firestore) Undelivered(ctx context.Context) ([]shop.Order, error) {
+	return f.flagged(ctx, "deliveryPending")
+}
+
+// Unpaid queries orders still waiting for a final payment state. Records
+// written before the awaitingPayment field existed are not found.
+func (f *Firestore) Unpaid(ctx context.Context) ([]shop.Order, error) {
+	return f.flagged(ctx, "awaitingPayment")
+}
+
+func (f *Firestore) flagged(ctx context.Context, field string) ([]shop.Order, error) {
 	query, _ := json.Marshal(map[string]any{"structuredQuery": map[string]any{
 		"from":  []map[string]string{{"collectionId": f.collection}},
-		"where": map[string]any{"fieldFilter": map[string]any{"field": map[string]string{"fieldPath": "deliveryPending"}, "op": "EQUAL", "value": map[string]bool{"booleanValue": true}}},
+		"where": map[string]any{"fieldFilter": map[string]any{"field": map[string]string{"fieldPath": field}, "op": "EQUAL", "value": map[string]bool{"booleanValue": true}}},
 		"limit": sweepLimit,
 	}})
 	r, err := http.NewRequestWithContext(ctx, http.MethodPost, f.documents+":runQuery", bytes.NewReader(query))

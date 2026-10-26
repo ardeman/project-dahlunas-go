@@ -13,6 +13,7 @@ const (
 
 var ErrSignature = errors.New("payment: invalid notification signature")
 var ErrIgnored = errors.New("payment: notification ignored")
+var ErrNoTransaction = errors.New("payment: no transaction yet")
 
 type Checkout struct {
 	ID, Email, Name, FinishURL string
@@ -38,4 +39,11 @@ type Status struct {
 type Gateway interface {
 	Create(context.Context, Checkout) (Session, error)
 	Notification(context.Context, []byte, string) (Status, error)
+}
+
+// Checker fetches an order's authoritative status without a notification, so
+// a lost notification does not leave a paid order unfulfilled. It returns
+// ErrNoTransaction while the buyer has not started paying.
+type Checker interface {
+	Check(context.Context, string) (Status, error)
 }

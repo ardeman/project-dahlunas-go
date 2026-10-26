@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-// registerTasks serves the delivery sweep for Cloud Scheduler. It is routed
+// registerTasks serves the delivery and payment sweep for Cloud Scheduler. It is routed
 // only when a task token is configured, and the token is checked first.
 func registerTasks(mux *http.ServeMux, config Options) {
 	if config.Shop == nil || config.TaskToken == "" {
@@ -28,10 +28,16 @@ func registerTasks(mux *http.ServeMux, config Options) {
 		for _, id := range report.Review {
 			log.Printf("delivery needs review: order %s (automatic email retries stopped)", id)
 		}
+		for _, id := range report.PaymentReview {
+			log.Printf("payment needs review: order %s (gateway status did not match the order)", id)
+		}
+		for _, id := range report.Confirmed {
+			log.Printf("payment confirmed by sweep: order %s (notification missing)", id)
+		}
 		if report.Pending > 0 {
 			log.Printf("delivery sweep: %d orders still pending", report.Pending)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]int{"delivered": report.Delivered, "pending": report.Pending, "review": len(report.Review)})
+		json.NewEncoder(w).Encode(map[string]int{"delivered": report.Delivered, "pending": report.Pending, "review": len(report.Review), "confirmed": len(report.Confirmed), "paymentReview": len(report.PaymentReview)})
 	})
 }

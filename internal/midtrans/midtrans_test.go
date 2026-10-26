@@ -85,6 +85,28 @@ func TestNotificationUsesAuthoritativeStatus(t *testing.T) {
 	}
 }
 
+func TestCheckReportsMissingTransaction(t *testing.T) {
+	for _, tc := range []struct {
+		code int
+		body string
+	}{
+		{404, `{"status_code":"404"}`},
+		{200, `{"status_code":"404","status_message":"Transaction doesn't exist."}`},
+	} {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(tc.code)
+			w.Write([]byte(tc.body))
+		}))
+		c := New("test-key", false)
+		c.statusURL = server.URL + "/"
+		if _, err := c.Check(context.Background(), "order-1"); !errors.Is(err, payment.ErrNoTransaction) {
+			t.Errorf("code=%d error=%v", tc.code, err)
+		}
+		server.Close()
+	}
+	var _ payment.Checker = (*Client)(nil)
+}
+
 func TestBadSignatureDoesNotContactProvider(t *testing.T) {
 	c := New("test-key", false)
 	c.statusURL = "http://invalid.invalid/"

@@ -61,7 +61,7 @@ The server serves a bilingual shop at `/`, policies at `/terms`, `/refunds` and 
 6. **Ready for a rush** (traffic stays small, since apps check codes offline; these are what break first):
    - Complete Resend domain verification and monitor delivery; codes are already shown on the paid page.
    - Checkout has a per-instance rate limit and server-verified Turnstile protection; configure Turnstile before production (see checkout setup). Fleet-wide edge limits remain future work.
-   - Delivery retries: a scheduled sweep resends stuck emails and logs orders needing review ([delivery monitoring](docs/checkout.md#delivery-monitoring)); set up its Cloud Scheduler job and log alert before sales. One code per payment is enforced by conditional writes and a fixed code ID. Payments whose notification never arrives still need a check in the gateway dashboard.
+   - Delivery retries: a scheduled sweep resends stuck emails and logs orders needing review ([delivery monitoring](docs/checkout.md#delivery-monitoring)); set up its Cloud Scheduler job and log alert before sales. One code per payment is enforced by conditional writes and a fixed code ID. The same sweep asks Midtrans about unpaid orders whose notification never arrived and fulfils those found paid; Lemon Squeezy orders rely on its webhook retries.
    - Card fraud and chargebacks: keep amounts small; codes checked offline can't be taken back.
    - Midtrans may ask for more documents as volume grows; taxes (NPWP; VAT abroad unless a merchant of record handles it).
 

@@ -48,19 +48,32 @@ type Order struct {
 
 // Store persists an order atomically. Save must compare Revision, returning
 // ErrConflict on stale writes; Create must never overwrite an existing order.
-// Undelivered lists orders whose stored DeliveryPending was true when written.
+// Undelivered lists orders whose stored DeliveryPending was true when written,
+// and Unpaid those whose stored AwaitingPayment was true.
 type Store interface {
 	Create(context.Context, Order) error
 	Get(context.Context, string) (Order, error)
 	Save(context.Context, Order) error
 	Undelivered(context.Context) ([]Order, error)
+	Unpaid(context.Context) ([]Order, error)
 }
 
 // DeliveryPending reports a paid order whose email is not confirmed sent.
 func (o Order) DeliveryPending() bool { return o.Paid && !o.EmailSent }
 
+// AwaitingPayment reports an order with no final payment state yet.
+func (o Order) AwaitingPayment() bool { return !o.Paid && o.State == "pending" }
+
 // deliveryWindow ends automatic sends before Resend's 24-hour deduplication.
 const deliveryWindow = 23 * time.Hour
+
+// checkAfter gives the gateway's notification time to arrive first. After
+// paymentWindow, longer than Snap's 24-hour token, an order is abandoned; a
+// late notification can still fulfil it.
+const (
+	checkAfter    = 10 * time.Minute
+	paymentWindow = 48 * time.Hour
+)
 
 type Mailer interface {
 	Send(context.Context, Order) error
@@ -211,6 +224,11 @@ func (s *Service) NotifyGateway(ctx context.Context, name string, data []byte, s
 	if err != nil {
 		return err
 	}
+	return s.apply(ctx, name, status)
+}
+
+// apply records an authoritative gateway status and fulfils a paid order.
+func (s *Service) apply(ctx context.Context, name string, status payment.Status) error {
 	for i := 0; i < 8; i++ {
 		o, err := s.Store.Get(ctx, status.ID)
 		if err != nil {
@@ -322,11 +340,23 @@ type SweepReport struct {
 	Delivered, Pending int
 	// Review lists order IDs whose automatic delivery window has closed.
 	Review []string
+	// Confirmed lists orders found paid without a notification; PaymentReview
+	// lists orders whose gateway status failed verification.
+	Confirmed, PaymentReview []string
 }
 
-// Sweep retries delivery for paid orders that are still waiting for email, so
-// delivery does not depend on gateways repeating their notifications.
+// Sweep retries delivery for paid orders that are still waiting for email, then
+// asks gateways about unpaid orders, so neither depends on gateways repeating
+// their notifications.
 func (s *Service) Sweep(ctx context.Context) (SweepReport, error) {
+	report, err := s.sweepDeliveries(ctx)
+	if err != nil {
+		return report, err
+	}
+	return report, s.sweepPayments(ctx, &report)
+}
+
+func (s *Service) sweepDeliveries(ctx context.Context) (SweepReport, error) {
 	var report SweepReport
 	orders, err := s.Store.Undelivered(ctx)
 	if err != nil {
@@ -351,4 +381,75 @@ func (s *Service) Sweep(ctx context.Context) (SweepReport, error) {
 		}
 	}
 	return report, nil
+}
+
+func (s *Service) sweepPayments(ctx context.Context, report *SweepReport) error {
+	orders, err := s.Store.Unpaid(ctx)
+	if err != nil {
+		return err
+	}
+	for _, o := range orders {
+		if !o.AwaitingPayment() {
+			if err := s.Store.Save(ctx, o); err != nil && !errors.Is(err, ErrConflict) {
+				return err
+			}
+			continue
+		}
+		age := s.now().Sub(o.Created)
+		if age < checkAfter {
+			continue
+		}
+		name := o.Product.GatewayName()
+		checker, _ := s.gateway(name).(payment.Checker)
+		if checker == nil {
+			// Without a status lookup, only the gateway's notification can confirm.
+			if age >= paymentWindow {
+				if err := s.abandon(ctx, o.ID); err != nil {
+					return err
+				}
+			}
+			continue
+		}
+		status, err := checker.Check(ctx, o.ID)
+		switch {
+		case errors.Is(err, payment.ErrNoTransaction):
+			if age >= paymentWindow {
+				if err := s.abandon(ctx, o.ID); err != nil {
+					return err
+				}
+			}
+			continue
+		case err != nil:
+			// The gateway is unreachable; the next sweep asks again.
+			continue
+		}
+		if err := s.apply(ctx, name, status); err != nil && !errors.Is(err, ErrRetry) {
+			report.PaymentReview = append(report.PaymentReview, o.ID)
+			continue
+		}
+		if status.Paid {
+			report.Confirmed = append(report.Confirmed, o.ID)
+		} else if status.State == "pending" && age >= paymentWindow {
+			if err := s.abandon(ctx, o.ID); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// abandon stops checking an order the buyer never paid.
+func (s *Service) abandon(ctx context.Context, id string) error {
+	for i := 0; i < 8; i++ {
+		o, err := s.Store.Get(ctx, id)
+		if err != nil || !o.AwaitingPayment() {
+			return err
+		}
+		o.State = "abandoned"
+		err = s.Store.Save(ctx, o)
+		if !errors.Is(err, ErrConflict) {
+			return err
+		}
+	}
+	return ErrConflict
 }

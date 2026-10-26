@@ -53,6 +53,15 @@ func (s *webStore) Undelivered(_ context.Context) ([]shop.Order, error) {
 	}
 	return result, nil
 }
+func (s *webStore) Unpaid(_ context.Context) ([]shop.Order, error) {
+	var result []shop.Order
+	for _, o := range s.orders {
+		if o.AwaitingPayment() {
+			result = append(result, o)
+		}
+	}
+	return result, nil
+}
 
 type webGateway struct {
 	checkout  payment.Checkout

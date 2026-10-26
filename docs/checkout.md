@@ -161,6 +161,18 @@ orders (up to 50 per run) and answers with counts only:
 requires `Authorization: Bearer <token>`. Orders saved before this field existed
 are not swept.
 
+The same run also checks payments whose notification never arrived. Each order
+record has an `awaitingPayment` field, true while it has no final payment state.
+For Midtrans orders at least 10 minutes old, the sweep asks Midtrans for the
+transaction status (up to 50 orders per run). A paid order then gets its code
+and email through the same verified, idempotent path as a notification. Expired
+or cancelled orders take Midtrans's state. Orders still unpaid after 48 hours
+are marked `abandoned`, and a late notification can still fulfil them. Lemon
+Squeezy has no lookup by Dahlunas's order id, so its orders rely on its own
+webhook retries and are only marked `abandoned` after 48 hours. The response
+adds `confirmed` (orders found paid without a notification) and `paymentReview`
+(orders whose gateway status failed verification, such as a wrong amount).
+
 Schedule it every 10 minutes for each service, with its own token:
 
 ```sh
@@ -173,7 +185,9 @@ gcloud scheduler jobs create http dahlunas-deliveries \
 
 Then create a log-based alert in Cloud Logging on the service's logs with the
 filter `textPayload:"delivery needs review"`, and optionally another on
-`textPayload:"delivery sweep failed"`, that notifies your email. The logs carry order
+`textPayload:"delivery sweep failed"`, that notifies your email. Add one more on `textPayload:"payment needs review"`.
+`payment confirmed by sweep` is informational: if it appears often, the gateway's
+notification URL needs checking. The logs carry order
 IDs only, never buyer data or codes.
 
 ## Verification

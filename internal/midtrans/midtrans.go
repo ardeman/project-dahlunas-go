@@ -55,6 +55,9 @@ func (c *Client) request(ctx context.Context, method, endpoint string, body any,
 		return errors.New("midtrans: unavailable")
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		return payment.ErrNoTransaction
+	}
 	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		return errors.New("midtrans: API rejected request")
 	}
@@ -102,12 +105,21 @@ func (c *Client) Notification(ctx context.Context, data []byte, _ string) (payme
 	}
 	// The signature does not cover transaction_status/fraud_status. Fetch status
 	// from Midtrans before trusting those fields, even for signed notifications.
+	return c.Check(ctx, n.ID)
+}
+
+// Check fetches the transaction status directly from Midtrans.
+func (c *Client) Check(ctx context.Context, id string) (payment.Status, error) {
 	var current notification
-	if err := c.request(ctx, http.MethodGet, c.statusURL+url.PathEscape(n.ID)+"/status", nil, &current); err != nil {
+	if err := c.request(ctx, http.MethodGet, c.statusURL+url.PathEscape(id)+"/status", nil, &current); err != nil {
 		return payment.Status{}, err
 	}
+	// Midtrans may answer 200 with status_code 404 before a method is chosen.
+	if current.Code == "404" {
+		return payment.Status{}, payment.ErrNoTransaction
+	}
 	amount, err := rupiah(current.Amount)
-	if err != nil || current.ID != n.ID {
+	if err != nil || current.ID != id {
 		return payment.Status{}, errors.New("midtrans: invalid status")
 	}
 	paid := current.Code == "200" && ((current.State == "settlement" && (current.Fraud == "" || current.Fraud == "accept")) || (current.State == "capture" && current.Fraud == "accept"))

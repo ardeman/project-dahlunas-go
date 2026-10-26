@@ -63,6 +63,17 @@ func (m *memoryStore) Undelivered(_ context.Context) ([]Order, error) {
 	}
 	return result, nil
 }
+func (m *memoryStore) Unpaid(_ context.Context) ([]Order, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var result []Order
+	for _, o := range m.orders {
+		if o.AwaitingPayment() {
+			result = append(result, o)
+		}
+	}
+	return result, nil
+}
 
 type gateway struct {
 	status   payment.Status
@@ -349,5 +360,101 @@ func TestSweepDeliversAndThenSkips(t *testing.T) {
 	}
 	if r, err := s.Sweep(context.Background()); err != nil || r.Delivered+r.Pending+len(r.Review) != 0 || m.calls != 2 {
 		t.Fatal("delivered order swept again", r, err)
+	}
+}
+
+// checker adds a status lookup to the test gateway.
+type checker struct {
+	*gateway
+	calls    int
+	checkErr error
+}
+
+func (c *checker) Check(_ context.Context, id string) (payment.Status, error) {
+	c.calls++
+	if c.checkErr != nil {
+		return payment.Status{}, c.checkErr
+	}
+	return c.status, nil
+}
+
+func TestSweepConfirmsPaymentWithoutNotification(t *testing.T) {
+	s, g, m, o := setup(t)
+	c := &checker{gateway: g}
+	s.Gateway = c
+	if r, err := s.Sweep(context.Background()); err != nil || c.calls != 0 {
+		t.Fatal("checked before the notification had time to arrive", r, err)
+	}
+	now := s.now()
+	s.Now = func() time.Time { return now.Add(10 * time.Minute) }
+	r, err := s.Sweep(context.Background())
+	if err != nil || len(r.Confirmed) != 1 || r.Confirmed[0] != o.ID || m.calls != 1 || m.code == "" {
+		t.Fatal("paid order not fulfilled", r, err, m.calls)
+	}
+	if r, err := s.Sweep(context.Background()); err != nil || c.calls != 1 || len(r.Confirmed) != 0 {
+		t.Fatal("paid order checked again", r, err, c.calls)
+	}
+}
+
+func TestSweepAbandonsUnpaidOrders(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		status payment.Status
+		err    error
+		state  string
+	}{
+		{"expired", payment.Status{Amount: 5000, State: "expire"}, nil, "expire"},
+		{"still pending", payment.Status{Amount: 5000, State: "pending"}, nil, "abandoned"},
+		{"never started", payment.Status{}, payment.ErrNoTransaction, "abandoned"},
+		{"gateway down", payment.Status{}, errors.New("unavailable"), "pending"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s, g, m, o := setup(t)
+			tc.status.ID = o.ID
+			g.status = tc.status
+			c := &checker{gateway: g, checkErr: tc.err}
+			s.Gateway = c
+			now := s.now()
+			s.Now = func() time.Time { return now.Add(48 * time.Hour) }
+			r, err := s.Sweep(context.Background())
+			stored, _ := s.Store.Get(context.Background(), o.ID)
+			if err != nil || stored.State != tc.state || stored.Paid || m.calls != 0 || len(r.Confirmed)+len(r.PaymentReview) != 0 {
+				t.Fatal(r, err, stored.State)
+			}
+		})
+	}
+}
+
+func TestSweepFlagsMismatchedPayment(t *testing.T) {
+	s, g, m, o := setup(t)
+	g.status.Amount = 1
+	s.Gateway = &checker{gateway: g}
+	now := s.now()
+	s.Now = func() time.Time { return now.Add(time.Hour) }
+	r, err := s.Sweep(context.Background())
+	if err != nil || len(r.PaymentReview) != 1 || r.PaymentReview[0] != o.ID || len(r.Confirmed) != 0 || m.calls != 0 {
+		t.Fatal(r, err)
+	}
+}
+
+func TestSweepAbandonsWithoutChecker(t *testing.T) {
+	s, _, _, o := setup(t)
+	now := s.now()
+	s.Now = func() time.Time { return now.Add(47 * time.Hour) }
+	s.Sweep(context.Background())
+	if stored, _ := s.Store.Get(context.Background(), o.ID); stored.State != "pending" {
+		t.Fatal("abandoned too early", stored.State)
+	}
+	s.Now = func() time.Time { return now.Add(48 * time.Hour) }
+	s.Sweep(context.Background())
+	if stored, _ := s.Store.Get(context.Background(), o.ID); stored.State != "abandoned" {
+		t.Fatal("not abandoned", stored.State)
+	}
+	// A late notification still fulfils the order.
+	if err := s.Notify(context.Background(), nil); err != nil {
+		t.Fatal(err)
+	}
+	if stored, _ := s.Store.Get(context.Background(), o.ID); !stored.Paid {
+		t.Fatal("late payment ignored")
 	}
 }
