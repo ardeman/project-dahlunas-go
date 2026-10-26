@@ -65,12 +65,12 @@ func (c *Client) request(ctx context.Context, method, endpoint string, body any,
 }
 
 func (c *Client) Create(ctx context.Context, o payment.Checkout) (payment.Session, error) {
-	// Start with QRIS; other methods need price thresholds before being offered.
+	// Start with QRIS (Snap names it other_qris); other methods need price thresholds before being offered.
 	body := map[string]any{
 		"transaction_details": map[string]any{"order_id": o.ID, "gross_amount": o.Amount},
 		"item_details":        []any{map[string]any{"id": "unlock", "price": o.Amount, "quantity": 1, "name": o.Name}},
 		"customer_details":    map[string]string{"email": o.Email},
-		"enabled_payments":    []string{"qris"},
+		"enabled_payments":    []string{"other_qris"},
 		"callbacks":           map[string]string{"finish": o.FinishURL},
 	}
 	var s payment.Session

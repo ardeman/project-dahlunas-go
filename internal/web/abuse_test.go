@@ -110,7 +110,7 @@ func TestCheckoutBotProtection(t *testing.T) {
 			if w.Code != 429 || w.Header().Get("Retry-After") != "2" || b.calls != 1 {
 				t.Fatal("limit bypassed", w.Code, b.calls)
 			}
-			for _, path := range []string{"/healthz", "/webhooks/midtrans"} {
+			for _, path := range []string{"/health", "/webhooks/midtrans"} {
 				method := "GET"
 				if strings.HasPrefix(path, "/webhooks") {
 					method = "POST"

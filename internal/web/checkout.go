@@ -86,6 +86,7 @@ func registerShop(mux *http.ServeMux, config Options) {
 	})
 	mux.HandleFunc("GET /orders/{id}/{token}", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Referrer-Policy", "no-referrer")
 		o, err := s.View(r.Context(), r.PathValue("id"), r.PathValue("token"))
 		if errors.Is(err, shop.ErrNotFound) {
 			http.NotFound(w, r)

@@ -8,9 +8,9 @@ six players and progress reports). Prices and IDs follow Coba Lagi's README and
 `assets/config/donations.json`. Store builds continue to use store billing. Other owned projects can be configured
 through the [project catalog](projects.md); the setup below describes the default.
 
-## Local sandbox
+## Local development (sandbox payments)
 
-1. Copy `.env.example` to `.env.sandbox` (`cp -n` preserves an existing file).
+1. Copy `.env.example` to `.env.development` (`cp -n` preserves an existing file).
    If the local copy predates checkout, add the new settings from the template.
 2. Fill in sandbox `MIDTRANS_SERVER_KEY` and `MIDTRANS_CLIENT_KEY`. Keep
    `MIDTRANS_PRODUCTION=false`. Never paste server keys into chats or logs.
@@ -51,7 +51,7 @@ through the [project catalog](projects.md); the setup below describes the defaul
 8. Set `SHOP_ENABLED=true`, then run:
 
    ```sh
-   (set -a; source .env.sandbox && go run ./cmd/server)
+   (set -a; source .env.development && go run ./cmd/server)
    ```
 
 For a full sandbox payment, Midtrans must reach your public HTTPS notification URL:
@@ -66,8 +66,11 @@ confirm payment. Use Midtrans's sandbox QRIS simulator to finish a test purchase
 Copy the same template to `.env.production` for local production testing. Set
 `MIDTRANS_PRODUCTION=true`, production Midtrans keys and a public HTTPS
 `SHOP_BASE_URL`. **These payments use real money.** Production refuses an emulator.
-Use a separate Google Cloud project from sandbox; collections are also separated
-as `orders-sandbox` and `orders-production`.
+This deployment uses the shared Google Cloud project `dah-lunas`, with orders
+separated as `orders-sandbox` and `orders-production`. Deploy sandbox and production
+as separate Cloud Run services with separate URLs, credentials and signing seeds.
+Project permissions and quotas are shared; collection names are not an IAM boundary.
+Separate Google Cloud projects remain an option for stronger isolation.
 
 On Cloud Run, configure keys and the signing seed through Secret Manager. Configure
 other settings as environment variables. Local env files are not uploaded by the
@@ -136,6 +139,8 @@ and [widget setup](https://developers.cloudflare.com/turnstile/get-started/clien
   notification from the dashboard. Browser success callbacks never grant access.
   Refunds are handled in Midtrans; already-issued offline codes cannot be revoked.
 - Order pages use `Cache-Control: no-store` and `Referrer-Policy: no-referrer`.
+  Other pages use `same-origin`: under `no-referrer`, browsers post the checkout
+  form with `Origin: null`, which the origin check rejects.
   Keep private order URLs out of access logs and analytics. Cloud Run request logs
   can include the full URL: configure a Cloud Logging exclusion for `/orders/`
   requests before production, and apply equivalent redaction/exclusion at any

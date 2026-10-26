@@ -31,7 +31,7 @@ func TestSnapRequest(t *testing.T) {
 		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 			t.Fatal(err)
 		}
-		if body.Details.Amount != 5000 || body.Details.ID != "order-1" || strings.Join(body.Methods, ",") != "qris" || body.Callbacks["finish"] != "https://shop.example/orders/private" {
+		if body.Details.Amount != 5000 || body.Details.ID != "order-1" || strings.Join(body.Methods, ",") != "other_qris" || body.Callbacks["finish"] != "https://shop.example/orders/private" {
 			t.Error("checkout contract changed")
 		}
 		w.Write([]byte(`{"token":"snap-token"}`))

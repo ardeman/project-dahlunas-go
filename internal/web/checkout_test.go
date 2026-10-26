@@ -79,6 +79,9 @@ func TestBrowserCheckoutThroughPaidPage(t *testing.T) {
 	if home.Code != 200 || !strings.Contains(home.Body.String(), "Rp 5000") || !strings.Contains(home.Body.String(), "Rp 19000") || !strings.Contains(home.Body.String(), "Rp 49000") {
 		t.Fatal(home.Code, home.Body.String())
 	}
+	if home.Header().Get("Referrer-Policy") != "same-origin" {
+		t.Fatal("checkout form must keep its Origin header", home.Header().Get("Referrer-Policy"))
+	}
 	cookie := home.Result().Cookies()[0]
 	values := url.Values{"csrf": {cookie.Value}, "accept": {"yes"}, "email": {"buyer@example.com"}, "product": {"coba-lagi-1"}, "amount": {"1"}}
 	post := func(origin, csrf, accept string) *httptest.ResponseRecorder {

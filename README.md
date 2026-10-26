@@ -12,11 +12,12 @@ Go (standard library first) with htmx pages, running on Cloud Run behind Firebas
 - For local configuration, use the single `.env.example` template:
 
   ```sh
-  cp -n .env.example .env.sandbox
+  cp -n .env.example .env.development
   cp -n .env.example .env.production
   ```
 
-  Fill each local file with the matching Midtrans credentials. Keep `MIDTRANS_PRODUCTION=false` in `.env.sandbox`; set it to `true` in `.env.production`. Use separate signing keys for sandbox codes and production codes. Both local files are ignored by Git and excluded from build uploads. On Cloud Run, configure secrets through Secret Manager.
+  Fill each local file with the matching Midtrans credentials. Keep `MIDTRANS_PRODUCTION=false` in `.env.development`; set it to `true` in `.env.production`. Use separate signing keys for sandbox codes and production codes. Both local files are ignored by Git and excluded from build uploads. On Cloud Run, configure secrets through Secret Manager.
+  Keep `SHOP_PRODUCTION` equal to `MIDTRANS_PRODUCTION` in each file. Both environments use project `dah-lunas`, with separate order collections and Cloud Run services. The example includes the verified sender `receipts@dahlunas.ardeman.com`; add a separate Resend key for each environment. Production needs its actual public HTTPS base URL. Leave checkout disabled until setup is complete.
 - Select an environment with one of the commands below. Each runs in a subshell, so switching does not leave credentials in your current shell. The server does not load environment files automatically. You can also copy the template to `.env` and load it using the same command pattern.
 - Production uses real money, including test purchases. Checkout is disabled by default (`SHOP_ENABLED=false`). Follow [checkout setup](docs/checkout.md) for Midtrans, Firestore, Resend, signing keys and refund terms before enabling it.
 
@@ -25,7 +26,7 @@ Go (standard library first) with htmx pages, running on Cloud Run behind Firebas
 | What | Command |
 | --- | --- |
 | Run locally | `go run ./cmd/server` (http://localhost:8080) |
-| Run with sandbox configuration | `(set -a; source .env.sandbox && go run ./cmd/server)` |
+| Run with development configuration (sandbox payments) | `(set -a; source .env.development && go run ./cmd/server)` |
 | Run with production configuration | `(set -a; source .env.production && go run ./cmd/server)` |
 | Test | `go test ./...` |
 | Checks | `test -z "$(gofmt -l .)" && go vet ./... && go test ./...` |
@@ -48,7 +49,7 @@ Go (standard library first) with htmx pages, running on Cloud Run behind Firebas
 - `.github/workflows/checks.yml` runs the Checks command on pushes and pull requests.
 - `docs/code-format.md` specifies the shared offline unlock-code format for Dahlunas and the apps.
 
-The server serves a bilingual shop at `/`, policies at `/terms`, `/refunds` and `/privacy`, private order pages at `/orders/{id}/{token}`, Midtrans notifications at `/webhooks/midtrans`, optional Lemon Squeezy notifications at `/webhooks/lemonsqueezy`, and a health check at `/healthz`. With checkout disabled, the homepage says sales are not open.
+The server serves a bilingual shop at `/`, policies at `/terms`, `/refunds` and `/privacy`, private order pages at `/orders/{id}/{token}`, Midtrans notifications at `/webhooks/midtrans`, optional Lemon Squeezy notifications at `/webhooks/lemonsqueezy`, and a health check at `/health`. With checkout disabled, the homepage says sales are not open.
 
 ## Roadmap
 

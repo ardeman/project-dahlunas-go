@@ -44,7 +44,8 @@ func Handler(options ...Options) http.Handler {
 	}
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServerFS(assets)))
 
-	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
+	// Cloud Run reserves some paths ending in z, including /healthz.
+	mux.HandleFunc("GET /health", func(w http.ResponseWriter, _ *http.Request) {
 		w.Write([]byte("ok"))
 	})
 
@@ -61,7 +62,8 @@ func Handler(options ...Options) http.Handler {
 	registerShop(mux, config)
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Referrer-Policy", "no-referrer")
+		// no-referrer would make browsers post forms with Origin: null, failing the checkout origin check.
+		w.Header().Set("Referrer-Policy", "same-origin")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
 		mux.ServeHTTP(w, r)
