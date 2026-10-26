@@ -94,7 +94,7 @@ func TestBrowserCheckoutThroughPaidPage(t *testing.T) {
 	h := Handler(Options{Shop: s, ClientKey: "public-client", Support: "support@example.com", RefundID: "Uji", RefundEN: "Test"})
 	home := httptest.NewRecorder()
 	h.ServeHTTP(home, httptest.NewRequest("GET", "https://shop.example/", nil))
-	if home.Code != 200 || !strings.Contains(home.Body.String(), "Rp 5000") || !strings.Contains(home.Body.String(), "Rp 19000") || !strings.Contains(home.Body.String(), "Rp 49000") {
+	if home.Code != 200 || !strings.Contains(home.Body.String(), "Rp 5.000") || !strings.Contains(home.Body.String(), "Rp 19.000") || !strings.Contains(home.Body.String(), "Rp 49.000") || !strings.Contains(home.Body.String(), `src="/static/products/coba-lagi-icon.png"`) || !strings.Contains(home.Body.String(), "coba-lagi-progress-id.jpg") || strings.Count(home.Body.String(), "Kode untuk versi GitHub") != 1 {
 		t.Fatal(home.Code, home.Body.String())
 	}
 	if home.Header().Get("Referrer-Policy") != "same-origin" {

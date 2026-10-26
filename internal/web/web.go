@@ -4,6 +4,7 @@ package web
 import (
 	"context"
 	"embed"
+	"fmt"
 	"html/template"
 	"io/fs"
 	"net/http"
@@ -69,4 +70,20 @@ func Handler(options ...Options) http.Handler {
 		w.Header().Set("X-Frame-Options", "DENY")
 		mux.ServeHTTP(w, r)
 	})
+}
+
+// CheckImages reports a catalog icon or image missing from static/products,
+// so a typo stops startup instead of showing a broken image.
+func CheckImages(products []shop.Product) error {
+	for _, p := range products {
+		for _, name := range []string{p.Icon, p.ProjectImage.ID, p.ProjectImage.EN, p.Image.ID, p.Image.EN} {
+			if name == "" {
+				continue
+			}
+			if _, err := fs.Stat(static, "static/products/"+name); err != nil {
+				return fmt.Errorf("catalog: image %s is not in internal/web/static/products", name)
+			}
+		}
+	}
+	return nil
 }

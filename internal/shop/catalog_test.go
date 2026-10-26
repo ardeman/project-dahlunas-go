@@ -13,7 +13,7 @@ import (
 )
 
 func TestCatalogValidation(t *testing.T) {
-	for _, name := range []string{"valid", "duplicate project", "duplicate slug", "zero project", "zero key", "zero product", "zero price", "too expensive", "missing language", "missing instructions", "subject newline", "invalid slug", "no products"} {
+	for _, name := range []string{"valid", "duplicate project", "duplicate slug", "zero project", "zero key", "zero product", "zero price", "too expensive", "missing language", "missing instructions", "subject newline", "invalid slug", "no products", "remote image", "half image", "multiline name"} {
 		t.Run(name, func(t *testing.T) {
 			var projects []ProjectConfig
 			json.Unmarshal(defaultCatalog, &projects)
@@ -43,6 +43,12 @@ func TestCatalogValidation(t *testing.T) {
 				p.Products[0].Slug = "../other"
 			case "no products":
 				p.Products = nil
+			case "remote image":
+				p.Icon = "https://example.com/icon.png"
+			case "half image":
+				p.Products[0].Image = Text{ID: "shot.png"}
+			case "multiline name":
+				p.Name.EN = "Coba\nLagi"
 			}
 			b, _ := json.Marshal(projects)
 			products, err := ParseCatalog(bytes.NewReader(b))
@@ -149,5 +155,26 @@ func TestCatalogGatewayCurrencyPairs(t *testing.T) {
 				t.Fatal("invalid currency/gateway accepted")
 			}
 		})
+	}
+}
+
+func TestGroupsShowSharedDescriptionOnce(t *testing.T) {
+	products := CobaLagi()
+	other := Product{Slug: "other", Project: 2, DescriptionID: "Lain", DescriptionEN: "Other"}
+	groups := Groups(append(products, other))
+	if len(groups) != 2 || len(groups[0].Products) != 3 || groups[0].Name.EN != "Coba Lagi" || groups[0].Icon != "coba-lagi-icon.png" || groups[0].Description.ID == "" {
+		t.Fatal(groups)
+	}
+	products[1].DescriptionEN = "Different"
+	if g := Groups(products); g[0].Description != (Text{}) {
+		t.Fatal("kept a description the products do not share", g[0].Description)
+	}
+}
+
+func TestRupiahGroupsThousands(t *testing.T) {
+	for price, want := range map[int64]string{5: "Rp 5", 5000: "Rp 5.000", 10_000_000: "Rp 10.000.000"} {
+		if got := (Product{Price: price}).FormattedPrice(); got != want {
+			t.Fatal(got, want)
+		}
 	}
 }

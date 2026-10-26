@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"net/mail"
+	"strconv"
 	"strings"
 	"time"
 
@@ -31,6 +32,10 @@ type Product struct {
 	KeyID                                              uint8
 	Delivery                                           EmailCopy
 	Gateway, Currency, VariantID                       string
+	// ProjectName, Icon and the images only illustrate the shop's product list.
+	ProjectName         Text
+	Icon                string
+	ProjectImage, Image Text
 }
 
 type Order struct {
@@ -107,7 +112,46 @@ func (p Product) FormattedPrice() string {
 	if p.CurrencyCode() == "USD" {
 		return fmt.Sprintf("US$ %d.%02d", p.Price/100, p.Price%100)
 	}
-	return fmt.Sprintf("Rp %d", p.Price)
+	return "Rp " + thousands(p.Price)
+}
+
+// thousands groups digits with dots, as Indonesian prices are written.
+func thousands(n int64) string {
+	s := strconv.FormatInt(n, 10)
+	for i := len(s) - 3; i > 0; i -= 3 {
+		s = s[:i] + "." + s[i:]
+	}
+	return s
+}
+
+// Group lists one project's products, in catalog order.
+type Group struct {
+	Name  Text
+	Icon  string
+	Image Text
+	// Description is set when every product shares it, so it shows once.
+	Description Text
+	Products    []Product
+}
+
+// Groups splits products by project, keeping catalog order.
+func Groups(products []Product) []Group {
+	var groups []Group
+	index := map[uint16]int{}
+	for _, p := range products {
+		i, ok := index[p.Project]
+		if !ok {
+			i = len(groups)
+			index[p.Project] = i
+			groups = append(groups, Group{Name: p.ProjectName, Icon: p.Icon, Image: p.ProjectImage, Description: Text{p.DescriptionID, p.DescriptionEN}})
+		}
+		g := &groups[i]
+		if g.Description != (Text{p.DescriptionID, p.DescriptionEN}) {
+			g.Description = Text{}
+		}
+		g.Products = append(g.Products, p)
+	}
+	return groups
 }
 func (s *Service) gateway(name string) payment.Gateway {
 	if g := s.Gateways[name]; g != nil {
@@ -453,3 +497,6 @@ func (s *Service) abandon(ctx context.Context, id string) error {
 	}
 	return ErrConflict
 }
+
+// Groups lists the shop's products by project.
+func (s *Service) Groups() []Group { return Groups(s.Products) }

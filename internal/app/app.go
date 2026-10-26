@@ -60,6 +60,9 @@ func Handler() (http.Handler, error) {
 		if err != nil {
 			return nil, err
 		}
+		if err := web.CheckImages(products); err != nil {
+			return nil, err
+		}
 	} else if value := os.Getenv("SHOP_KEY_ID"); value != "" {
 		keyID, err := strconv.ParseUint(value, 10, 8)
 		if err != nil || keyID == 0 {

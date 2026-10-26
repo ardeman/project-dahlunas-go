@@ -5,6 +5,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/ardeman/project-dahlunas-go/internal/shop"
 )
 
 func TestRoutes(t *testing.T) {
@@ -97,5 +99,16 @@ func TestHomeLanguages(t *testing.T) {
 				t.Errorf("%s (%q) shows %q", tc.target, tc.acceptLanguage, text)
 			}
 		}
+	}
+}
+
+func TestCatalogImagesShip(t *testing.T) {
+	products := shop.CobaLagi()
+	if err := CheckImages(products); err != nil {
+		t.Fatal(err)
+	}
+	products[0].Image = shop.Text{ID: "missing.png", EN: "missing.png"}
+	if CheckImages(products) == nil {
+		t.Fatal("accepted a missing image")
 	}
 }

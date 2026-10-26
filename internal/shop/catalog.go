@@ -25,9 +25,14 @@ type EmailCopy struct {
 	Instructions Text `json:"instructions"`
 }
 
+// ProjectConfig's name, icon and image are optional; they group and illustrate
+// the project's products on the home page.
 type ProjectConfig struct {
 	ID       uint16          `json:"id"`
 	KeyID    uint8           `json:"key_id"`
+	Name     Text            `json:"name"`
+	Icon     string          `json:"icon,omitempty"`
+	Image    Text            `json:"image"`
 	Email    EmailCopy       `json:"email"`
 	Products []ProductConfig `json:"products"`
 }
@@ -38,6 +43,7 @@ type ProductConfig struct {
 	Price       int64  `json:"price"`
 	Name        Text   `json:"name"`
 	Description Text   `json:"description"`
+	Image       Text   `json:"image"`
 	Gateway     string `json:"gateway,omitempty"`
 	Currency    string `json:"currency,omitempty"`
 	VariantID   string `json:"variant_id,omitempty"`
@@ -67,18 +73,29 @@ func ParseCatalog(r io.Reader) ([]Product, error) {
 	}
 	projectIDs, slugs := map[uint16]bool{}, map[string]bool{}
 	slugPattern := regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*$`)
+	// Images are files under web/static/products, never third-party URLs that
+	// would expose buyers' IP addresses.
+	assetPattern := regexp.MustCompile(`^[a-z0-9]+(-[a-z0-9]+)*\.(png|jpg|webp|svg)$`)
+	optional := func(t Text, valid func(string) bool) bool {
+		return t == Text{} || valid(t.ID) && valid(t.EN)
+	}
+	line := func(s string) bool { return strings.TrimSpace(s) != "" && !strings.ContainsAny(s, "\r\n\x00") }
+	asset := func(name string) bool { return assetPattern.MatchString(name) && len(name) <= 100 }
 	var products []Product
 	for _, project := range projects {
 		if project.ID == 0 || project.KeyID == 0 || projectIDs[project.ID] || len(project.Products) == 0 {
 			return nil, errors.New("catalog: project IDs must be unique and nonzero, with a key and products")
 		}
 		projectIDs[project.ID] = true
+		if !optional(project.Name, line) || (project.Icon != "" && !asset(project.Icon)) || !optional(project.Image, asset) {
+			return nil, fmt.Errorf("catalog: project %d needs a bilingual one-line name and image/icon file names such as coba-lagi-icon.png", project.ID)
+		}
 		copy := project.Email
 		if !validText(copy.Subject) || strings.ContainsAny(copy.Subject.ID+copy.Subject.EN, "\n") || !validText(copy.ThankYou) || !validText(copy.Instructions) {
 			return nil, fmt.Errorf("catalog: project %d needs bilingual email wording", project.ID)
 		}
 		for _, p := range project.Products {
-			if !slugPattern.MatchString(p.Slug) || len(p.Slug) > 100 || slugs[p.Slug] || p.ID == 0 || p.Price <= 0 || p.Price > 10_000_000 || !validText(p.Name) || !validText(p.Description) {
+			if !slugPattern.MatchString(p.Slug) || len(p.Slug) > 100 || slugs[p.Slug] || p.ID == 0 || p.Price <= 0 || p.Price > 10_000_000 || !validText(p.Name) || !validText(p.Description) || !optional(p.Image, asset) {
 				return nil, fmt.Errorf("catalog: invalid product in project %d (unique slug, nonzero ID, bilingual text and price 1–10000000 required)", project.ID)
 			}
 			gateway, currency := p.Gateway, p.Currency
@@ -92,7 +109,7 @@ func ParseCatalog(r io.Reader) ([]Product, error) {
 				return nil, errors.New("catalog: require Midtrans/IDR or Lemon Squeezy/USD with numeric variant_id (USD limit 100000 cents)")
 			}
 			slugs[p.Slug] = true
-			products = append(products, Product{Slug: p.Slug, NameID: p.Name.ID, NameEN: p.Name.EN, DescriptionID: p.Description.ID, DescriptionEN: p.Description.EN, Price: p.Price, Project: project.ID, Product: p.ID, KeyID: project.KeyID, Delivery: copy, Gateway: gateway, Currency: currency, VariantID: p.VariantID})
+			products = append(products, Product{Slug: p.Slug, NameID: p.Name.ID, NameEN: p.Name.EN, DescriptionID: p.Description.ID, DescriptionEN: p.Description.EN, Price: p.Price, Project: project.ID, Product: p.ID, KeyID: project.KeyID, Delivery: copy, Gateway: gateway, Currency: currency, VariantID: p.VariantID, ProjectName: project.Name, Icon: project.Icon, ProjectImage: project.Image, Image: p.Image})
 		}
 	}
 	return products, nil

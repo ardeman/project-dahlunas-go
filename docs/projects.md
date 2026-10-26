@@ -21,10 +21,16 @@ The top level is a nonempty array of projects. Each project contains:
 - `id`: unique nonzero 16-bit offline project ID, agreed with the app.
 - `key_id`: nonzero 8-bit signing key ID. Provide its seed privately through
   `DAHLUNAS_KEY_<id>_<key_id>` and provision its public key in that app.
+- `name` (optional): the project's one-line name, with `id` and `en` text. The
+  home page groups each project's products under it.
+- `icon` (optional): a square image shown beside the name, such as
+  `coba-lagi-icon.png`.
+- `image` (optional): a screenshot shown above the products, with an `id` and
+  an `en` file name so each language sees its own.
 - `email`: `subject`, `thank_you`, and `instructions`, each with nonempty `id`
   (Indonesian) and `en` (English) text. Instructions appear on the paid page too.
 - `products`: a nonempty array, each containing `slug`, `id`, `price`, `name`,
-  and `description`, plus optional `gateway`, `currency`, and `variant_id`. Names and descriptions each contain `id` and `en` text.
+  and `description`, plus optional `gateway`, `currency`, `variant_id` and `image` (`id` and `en` file names, shown as a thumbnail beside the product). Names and descriptions each contain `id` and `en` text.
 
 Product slugs must be unique across the entire shop, at most 100 characters,
 using lowercase letters, digits and single separating hyphens. Product IDs are
@@ -44,6 +50,12 @@ explicitly. Do not assume different prices grant the same features. Email copy
 is plain text, not a template: Dahlunas adds the code, order ID and support email.
 Use the project's instructions to describe where buyers enter the code; children's
 apps must continue verifying codes offline without contacting Dahlunas.
+
+Icons and images are file names, not URLs: commit the files to
+`internal/web/static/products/` (PNG, JPEG, WebP or SVG; lowercase names with
+hyphens) so buyers' browsers never contact a third party. A missing file stops
+startup. Keep screenshots small, about 960 pixels wide. When every product of a
+project has the same description, the home page shows it once under the image.
 
 ## Existing orders and rotation
 

@@ -32,6 +32,8 @@ A change is done only when the **Checks** command in `README.md` passes. If you 
 
 Record architectural choices here as one line each: date, decision, reason.
 
+- 2026-10-26: The home page groups products by project, with an optional catalog name, icon and per-language screenshot served from `internal/web/static/products/`; file names only, never URLs, so no third-party image request exposes buyer IPs. Rupiah prices group thousands with dots (`Rp 19.000`).
+
 - 2026-10-26: The sandbox gets its own Hosting site, `dah-lunas-sandbox.web.app`, rewriting to `dahlunas-development` in the same Firebase project; a memorable address, and sandbox tests now pass through Hosting like production. The checkout CSRF cookie is named `__session`, the only cookie Hosting forwards. Separate Firebase projects per environment can wait until others get dev access.
 
 - 2026-10-26: Pages show one language at a time, chosen by `?lang=` carried on internal links, else `Accept-Language`, else Indonesian; Firebase Hosting forwards no cookie but `__session` to Cloud Run, so a language cookie would never arrive. Emails stay bilingual.
