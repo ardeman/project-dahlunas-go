@@ -27,6 +27,23 @@ func TestRoutes(t *testing.T) {
 	}
 }
 
+// Every sandbox page, error pages included, says so in its band and tab title;
+// production pages don't.
+func TestSandboxLabel(t *testing.T) {
+	for _, production := range []bool{false, true} {
+		h := Handler(Options{Production: production})
+		for _, path := range []string{"/", "/terms", "/missing"} {
+			rec := httptest.NewRecorder()
+			h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path+"?lang=en", nil))
+			body := rec.Body.String()
+			labelled := strings.Contains(body, `class="sandbox"`) && strings.Contains(body, "<title>Sandbox · ")
+			if labelled == production || strings.Contains(body, "Sandbox") == production {
+				t.Errorf("production=%v %s: sandbox label shown = %v", production, path, labelled)
+			}
+		}
+	}
+}
+
 // Every page, error pages included, carries the language selector and the
 // policy links once, in the footer.
 func TestNavigationOnEveryPage(t *testing.T) {

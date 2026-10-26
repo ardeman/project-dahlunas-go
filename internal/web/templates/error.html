@@ -1,4 +1,4 @@
-<!doctype html><html lang="{{.Lang}}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{.Message}} · Dahlunas</title><link rel="stylesheet" href="/static/shop.css"><link rel="icon" href="/static/icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/static/apple-touch-icon.png"></head>
+<!doctype html><html lang="{{.Lang}}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{if not .Production}}Sandbox · {{end}}{{.Message}} · Dahlunas</title><link rel="stylesheet" href="/static/shop.css"><link rel="icon" href="/static/icon.svg" type="image/svg+xml"><link rel="apple-touch-icon" href="/static/apple-touch-icon.png"></head>
 <body>{{template "header" .}}<main>
 <h1>{{.Message}}</h1>
 <a href="{{.Href "/"}}">{{.T "Kembali ke toko" "Back to shop"}}</a>

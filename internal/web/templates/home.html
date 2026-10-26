@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Dahlunas</title>
+  <title>{{if not .Production}}Sandbox · {{end}}Dahlunas</title>
   <link rel="stylesheet" href="/static/shop.css">
   <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
@@ -15,7 +15,6 @@
   <main>
   <h1>{{.T "Bayar sekali, dapatkan kode." "Pay once, get your code."}}</h1>
   {{if .Shop}}
-  {{if not .Production}}<p class="notice">{{.T "Sandbox: pembayaran percobaan, tanpa uang sungguhan." "Sandbox: test payments, no real money."}}</p>{{end}}
   <section aria-labelledby="product-title">
     <h2 id="product-title">{{.T "Pilih produk" "Choose a product"}}</h2>
     <form method="post" action="{{.Href "/checkout"}}">
