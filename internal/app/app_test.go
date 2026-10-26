@@ -3,6 +3,7 @@ package app
 import (
 	"encoding/json"
 	"github.com/ardeman/project-dahlunas-go/internal/shop"
+	"github.com/ardeman/project-dahlunas-go/internal/web"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
@@ -116,6 +117,28 @@ func TestCustomCatalogValidatesEachProjectKey(t *testing.T) {
 	os.WriteFile(path, []byte(`[{"id":2}]`), 0600)
 	if _, err := Handler(); err == nil {
 		t.Fatal("invalid catalog enabled checkout")
+	}
+}
+
+// Tracked catalogs ship in the image at /config; a broken one would stop startup.
+func TestTrackedCatalogsAreValid(t *testing.T) {
+	paths, _ := filepath.Glob("../../config/*.json")
+	if len(paths) == 0 {
+		t.Fatal("no tracked catalogs")
+	}
+	for _, path := range paths {
+		file, err := os.Open(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		products, err := shop.ParseCatalog(file)
+		file.Close()
+		if err != nil {
+			t.Fatal(path, err)
+		}
+		if err := web.CheckImages(products); err != nil {
+			t.Fatal(path, err)
+		}
 	}
 }
 

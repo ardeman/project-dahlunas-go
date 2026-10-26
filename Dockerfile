@@ -7,4 +7,5 @@ RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /dahlunas ./cmd/server
 
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /dahlunas /dahlunas
+COPY --from=build /src/config /config
 ENTRYPOINT ["/dahlunas"]

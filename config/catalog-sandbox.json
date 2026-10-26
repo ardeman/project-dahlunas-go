@@ -1,0 +1,134 @@
+[
+  {
+    "id": 1,
+    "key_id": 1,
+    "name": {
+      "id": "Coba Lagi",
+      "en": "Coba Lagi"
+    },
+    "icon": "coba-lagi-icon.png",
+    "image": {
+      "id": "coba-lagi-progress-id.jpg",
+      "en": "coba-lagi-progress-en.jpg"
+    },
+    "email": {
+      "subject": {
+        "id": "Kode Coba Lagi",
+        "en": "Your Coba Lagi code"
+      },
+      "thank_you": {
+        "id": "Terima kasih telah mendukung Coba Lagi!",
+        "en": "Thank you for supporting Coba Lagi!"
+      },
+      "instructions": {
+        "id": "Masukkan kode di area orang tua → Punya kode? (versi GitHub).",
+        "en": "Enter the code in the parent area → Have a code? (GitHub builds)."
+      }
+    },
+    "products": [
+      {
+        "slug": "coba-lagi-1",
+        "id": 1,
+        "price": 5000,
+        "name": {
+          "id": "Sponsor Coba Lagi",
+          "en": "Coba Lagi sponsor"
+        },
+        "description": {
+          "id": "Kode untuk versi GitHub: hingga enam pemain dan laporan perkembangan. Semua pilihan membuka fitur yang sama. Kode tidak berlaku di versi App Store atau Google Play.",
+          "en": "Code for GitHub builds: up to six players and progress reports. Every option unlocks the same features. Codes do not apply to App Store or Google Play builds."
+        }
+      },
+      {
+        "slug": "coba-lagi-2",
+        "id": 1,
+        "price": 19000,
+        "name": {
+          "id": "Sponsor Coba Lagi",
+          "en": "Coba Lagi sponsor"
+        },
+        "description": {
+          "id": "Kode untuk versi GitHub: hingga enam pemain dan laporan perkembangan. Semua pilihan membuka fitur yang sama. Kode tidak berlaku di versi App Store atau Google Play.",
+          "en": "Code for GitHub builds: up to six players and progress reports. Every option unlocks the same features. Codes do not apply to App Store or Google Play builds."
+        }
+      },
+      {
+        "slug": "coba-lagi-3",
+        "id": 1,
+        "price": 49000,
+        "name": {
+          "id": "Sponsor Coba Lagi",
+          "en": "Coba Lagi sponsor"
+        },
+        "description": {
+          "id": "Kode untuk versi GitHub: hingga enam pemain dan laporan perkembangan. Semua pilihan membuka fitur yang sama. Kode tidak berlaku di versi App Store atau Google Play.",
+          "en": "Code for GitHub builds: up to six players and progress reports. Every option unlocks the same features. Codes do not apply to App Store or Google Play builds."
+        }
+      }
+    ]
+  },
+  {
+    "id": 2,
+    "key_id": 1,
+    "name": {
+      "id": "Bedug",
+      "en": "Bedug"
+    },
+    "icon": "bedug-icon.png",
+    "email": {
+      "subject": {
+        "id": "Kode infaq Bedug",
+        "en": "Your Bedug infaq code"
+      },
+      "thank_you": {
+        "id": "Terima kasih atas infaq Anda untuk pengembangan Bedug!",
+        "en": "Thank you for your infaq supporting Bedug's development!"
+      },
+      "instructions": {
+        "id": "Masukkan kode di Pengaturan → Tentang → Infaq → Punya kode? (versi Windows dan Linux).",
+        "en": "Enter the code in Settings → About → Infaq → Have a code? (Windows and Linux builds)."
+      }
+    },
+    "products": [
+      {
+        "slug": "bedug-1",
+        "id": 1,
+        "price": 5000,
+        "name": {
+          "id": "Infaq Bedug",
+          "en": "Bedug infaq"
+        },
+        "description": {
+          "id": "Infaq untuk pengembangan Bedug, dengan kode untuk versi Windows dan Linux (Microsoft Store, Flathub). Bedug tetap gratis; semua pilihan sama, kode menandai infaq Anda di aplikasi dan mematikan iklan bila versi itu menampilkannya. Kode tidak berlaku di versi App Store atau Google Play.",
+          "en": "Infaq supporting Bedug's development, with a code for Windows and Linux builds (Microsoft Store, Flathub). Bedug stays free; every option is the same: the code marks your infaq in the app and turns ads off where that build shows them. Codes do not apply to App Store or Google Play builds."
+        }
+      },
+      {
+        "slug": "bedug-2",
+        "id": 1,
+        "price": 19000,
+        "name": {
+          "id": "Infaq Bedug",
+          "en": "Bedug infaq"
+        },
+        "description": {
+          "id": "Infaq untuk pengembangan Bedug, dengan kode untuk versi Windows dan Linux (Microsoft Store, Flathub). Bedug tetap gratis; semua pilihan sama, kode menandai infaq Anda di aplikasi dan mematikan iklan bila versi itu menampilkannya. Kode tidak berlaku di versi App Store atau Google Play.",
+          "en": "Infaq supporting Bedug's development, with a code for Windows and Linux builds (Microsoft Store, Flathub). Bedug stays free; every option is the same: the code marks your infaq in the app and turns ads off where that build shows them. Codes do not apply to App Store or Google Play builds."
+        }
+      },
+      {
+        "slug": "bedug-3",
+        "id": 1,
+        "price": 49000,
+        "name": {
+          "id": "Infaq Bedug",
+          "en": "Bedug infaq"
+        },
+        "description": {
+          "id": "Infaq untuk pengembangan Bedug, dengan kode untuk versi Windows dan Linux (Microsoft Store, Flathub). Bedug tetap gratis; semua pilihan sama, kode menandai infaq Anda di aplikasi dan mematikan iklan bila versi itu menampilkannya. Kode tidak berlaku di versi App Store atau Google Play.",
+          "en": "Infaq supporting Bedug's development, with a code for Windows and Linux builds (Microsoft Store, Flathub). Bedug stays free; every option is the same: the code marks your infaq in the app and turns ads off where that build shows them. Codes do not apply to App Store or Google Play builds."
+        }
+      }
+    ]
+  }
+]

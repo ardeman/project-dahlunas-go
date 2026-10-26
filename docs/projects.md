@@ -9,12 +9,28 @@ continue to use `SHOP_KEY_ID` (default 1) to rotate that project's key.
 
 ## Configure projects
 
-Copy the default JSON to a tracked file, for example `config/projects.json`, then
-set `SHOP_CATALOG_FILE=config/projects.json`. Unset `SHOP_KEY_ID` when using a
-custom catalog: each project's `key_id` selects its signing key. Keep the file in
-the deployed source tree or mount it in Cloud Run. Paths are relative to the
-server's working directory. The file contains public copy and IDs, never seeds
-or gateway credentials. Changes take effect on server restart.
+Copy the default JSON to a tracked file under `config/`, then point
+`SHOP_CATALOG_FILE` at it. Unset `SHOP_KEY_ID` when using a custom catalog: each
+project's `key_id` selects its signing key. The image copies `config/` to
+`/config`, so on Cloud Run use the absolute path, such as
+`SHOP_CATALOG_FILE=/config/catalog-sandbox.json`; locally, paths are relative to
+the server's working directory. A test checks that every tracked catalog parses
+and its images exist. The file contains public copy and IDs, never seeds or
+gateway credentials. Changes take effect on the next deploy or restart.
+
+Sandbox and production sign with different key IDs (Coba Lagi uses 1 in the
+sandbox, 2 in production), so each environment has its own catalog file.
+
+## Projects
+
+| ID | Project | Sandbox | Production |
+| --- | --- | --- | --- |
+| 1 | Coba Lagi: sponsor codes for GitHub builds | key 1 | key 2 (embedded default) |
+| 2 | Bedug: infaq codes for Windows and Linux builds (Microsoft Store, Flathub) | key 1 ([`catalog-sandbox.json`](../config/catalog-sandbox.json)) | not yet: added once Bedug's desktop builds accept codes |
+
+Bedug's phone and Mac App Store builds keep store in-app purchase, as store rules
+require; its codes, like Coba Lagi's, are checked offline. Catat Saja is planned
+as a subscription, which needs new Dahlunas work (README → Roadmap).
 
 The top level is a nonempty array of projects. Each project contains:
 
