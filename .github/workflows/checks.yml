@@ -1,7 +1,8 @@
 name: Checks
 
 # Pushes to main that change the service run these checks inside Deploy
-# instead, so a run's workflow name shows whether it deployed.
+# instead, so a run's workflow name shows whether it deployed; a push that
+# changes docs too still starts this workflow, but skips the checks.
 on:
   pull_request:
   push:
@@ -15,12 +16,43 @@ on:
       - firebase.json
       - .gitignore
   workflow_call:
+    inputs:
+      deploying:
+        type: boolean
+        default: false
 
 permissions:
   contents: read
 
 jobs:
+  # A push that also changes the service starts Deploy, which runs these checks
+  # itself; path filters can't express "only docs", so look at the files here.
+  # Keep the patterns in step with the paths above and Deploy's paths-ignore.
+  scope:
+    if: github.event_name == 'push' && !inputs.deploying
+    runs-on: ubuntu-latest
+    outputs:
+      service: ${{ steps.files.outputs.service }}
+    steps:
+      - id: files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          service=false
+          if [ "${BEFORE//0/}" != "" ]; then
+            for f in $(gh api "repos/$GITHUB_REPOSITORY/compare/$BEFORE...$GITHUB_SHA" --jq '.files[].filename'); do
+              case "$f" in
+                *.md|docs/*|public/*|.github/*|LICENSE|firebase.json|.gitignore) ;;
+                *) service=true ;;
+              esac
+            done
+          fi
+          echo "service=$service" >> "$GITHUB_OUTPUT"
+
   checks:
+    needs: scope
+    if: ${{ !cancelled() && needs.scope.outputs.service != 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

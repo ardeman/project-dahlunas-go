@@ -28,6 +28,8 @@ env:
 jobs:
   checks:
     uses: ./.github/workflows/checks.yml
+    with:
+      deploying: true
 
   deploy-development:
     needs: checks
