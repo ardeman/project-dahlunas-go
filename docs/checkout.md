@@ -59,7 +59,8 @@ For a full sandbox payment, Midtrans must reach your public HTTPS notification U
 dashboard's payment notification settings. A localhost URL is not reachable from
 Midtrans. Use Snap Checkout settings to configure the notification URL as offered
 by the dashboard. The per-order finish URL is provided by the server; it does not
-confirm payment. Use Midtrans's sandbox QRIS simulator to finish a test purchase.
+confirm payment. Use Midtrans's sandbox QRIS simulator to finish a test purchase
+([steps](../README.md#test-a-payment)).
 
 ## Production
 

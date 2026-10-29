@@ -37,6 +37,18 @@ Go (standard library first) with htmx pages, running on Cloud Run behind Firebas
 | Deploy the service by hand | `gcloud run deploy dahlunas --source . --region asia-southeast2` |
 | Deploy Hosting | `firebase deploy --only hosting` (both sites), or `--only hosting:sandbox` / `hosting:production` |
 
+## Test a payment
+
+Use the sandbox, https://dah-lunas-sandbox.web.app (service `dahlunas-development`). Its payments are Midtrans test payments with no real money; every purchase on `dahlunas.ardeman.com` is real.
+
+1. Open a project page, for example https://dah-lunas-sandbox.web.app/projects/coba-lagi, choose an amount, enter an email you can read, accept the terms and press **Continue to payment**.
+2. On the order page, press **Pay with QRIS**. Midtrans Snap opens with a QR code that stays valid for 15 minutes.
+3. Right-click the QR code and copy the image address, for example `https://merchants-app.sbx.midtrans.com/v4/qris/gopay/<ref>/qr-code`. If the simulator calls it unparsable, use `https://api.sandbox.midtrans.com/v2/gopay/<ref>/qr-code` with the same `<ref>`.
+4. Open Midtrans's [QRIS simulator](https://simulator.sandbox.midtrans.com/v2/qris/index), paste the address, press **Scan QR**, check the amount and press **Pay**.
+5. Within seconds Snap says "Payment successful" and the order page shows the LUNAS stamp and the code; press **Check status** in Snap if it hasn't updated. The email with the code arrives shortly after.
+
+If the order page stays on "Waiting for payment", check the Midtrans notification reached the service in the `dahlunas-development` logs (`/webhooks/midtrans`) and look at the order in Firestore under `orders-sandbox/<order id>`. The dashboard's "Test notification URL" button gets a 401 by design: its samples aren't signed with the merchant key. Last passed end to end on 2026-10-29.
+
 ## Layout
 
 - `cmd/server/` starts the HTTP server (`PORT`, set by Cloud Run).
