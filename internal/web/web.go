@@ -26,12 +26,22 @@ type Options struct {
 	BotVerifier      interface {
 		Verify(context.Context, string) (bool, error)
 	}
-	Shop                        *shop.Service
+	Shop *shop.Service
+	// Catalog lists the products, with prices, while Shop is nil and checkout is closed.
+	Catalog                     []shop.Product
 	ClientKey                   string
 	Production                  bool
 	Support, RefundID, RefundEN string
 	// TaskToken authorizes Cloud Scheduler's delivery sweep.
 	TaskToken string
+}
+
+// groups lists the projects on sale, or on show while checkout is closed.
+func (o Options) groups() []shop.Group {
+	if o.Shop != nil {
+		return o.Shop.Groups()
+	}
+	return shop.Groups(o.Catalog)
 }
 
 func Handler(options ...Options) http.Handler {
@@ -52,34 +62,28 @@ func Handler(options ...Options) http.Handler {
 		w.Write([]byte("ok"))
 	})
 
-	if config.Shop != nil {
-		// A shop with one project opens on that project's page.
-		mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
-			groups := config.Shop.Groups()
-			if len(groups) == 1 {
-				checkoutForm(w, r, config, groups[0])
+	// A shop with one project opens on that project's page.
+	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
+		groups := config.groups()
+		if len(groups) == 1 {
+			checkoutForm(w, r, config, groups[0])
+			return
+		}
+		p := newPage(r, config)
+		render(w, p, "home.html", struct {
+			page
+			Groups []shop.Group
+		}{p, groups})
+	})
+	mux.HandleFunc("GET /projects/{slug}", func(w http.ResponseWriter, r *http.Request) {
+		for _, g := range config.groups() {
+			if g.Slug == r.PathValue("slug") {
+				checkoutForm(w, r, config, g)
 				return
 			}
-			p := newPage(r, config)
-			render(w, p, "home.html", struct {
-				page
-				Groups []shop.Group
-			}{p, groups})
-		})
-		mux.HandleFunc("GET /projects/{slug}", func(w http.ResponseWriter, r *http.Request) {
-			g, ok := config.Shop.Group(r.PathValue("slug"))
-			if !ok {
-				fail(w, newPage(r, config), "Halaman tidak ditemukan.", "Page not found.", http.StatusNotFound)
-				return
-			}
-			checkoutForm(w, r, config, g)
-		})
-	} else {
-		mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
-			p := newPage(r, config)
-			render(w, p, "home.html", p)
-		})
-	}
+		}
+		fail(w, newPage(r, config), "Halaman tidak ditemukan.", "Page not found.", http.StatusNotFound)
+	})
 	registerShop(mux, config)
 	registerTasks(mux, config)
 	registerActivations(mux, config)

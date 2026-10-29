@@ -49,9 +49,6 @@ func Handler() (http.Handler, error) {
 		return nil, err
 	}
 	config.Production = production
-	if !enabled {
-		return web.Handler(config), nil
-	}
 	products := shop.CobaLagi()
 	if path := os.Getenv("SHOP_CATALOG_FILE"); path != "" {
 		if os.Getenv("SHOP_KEY_ID") != "" {
@@ -77,6 +74,11 @@ func Handler() (http.Handler, error) {
 		for i := range products {
 			products[i].KeyID = uint8(keyID)
 		}
+	}
+	// A closed shop still lists its products and prices, as Midtrans's review asks.
+	if !enabled {
+		config.Catalog = products
+		return web.Handler(config), nil
 	}
 	required := []string{"SHOP_BASE_URL", "SHOP_REFUND_ID", "SHOP_REFUND_EN", "GOOGLE_CLOUD_PROJECT", "RESEND_API_KEY", "RESEND_FROM"}
 	needed := map[string]bool{}

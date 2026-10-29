@@ -21,12 +21,12 @@
   </div>
   <section aria-labelledby="product-title">
     <h2 id="product-title">{{if $g.Amounts}}{{.T "Pilih jumlah" "Choose an amount"}}{{else}}{{.T "Pilih produk" "Choose a product"}}{{end}}</h2>
-    <form method="post" action="{{.Href "/checkout"}}">
-      <input type="hidden" name="csrf" value="{{.CSRF}}">
+    {{$off := not .Shop}}<form method="post" action="{{.Href "/checkout"}}">
+      {{if .CSRF}}<input type="hidden" name="csrf" value="{{.CSRF}}">{{end}}
       {{if $g.Amounts}}
       <fieldset><legend>{{.T "Jumlah" "Amount"}}</legend>
       <div class="amounts">
-        {{range $g.Products}}<label class="amount"><input type="radio" name="product" value="{{.Slug}}" {{if eq .Slug $p.Slug}}checked{{end}} required><span>{{.FormattedPrice}}</span></label>{{end}}
+        {{range $g.Products}}<label class="amount"><input type="radio" name="product" value="{{.Slug}}" {{if eq .Slug $p.Slug}}checked{{end}} required{{if $off}} disabled{{end}}><span>{{.FormattedPrice}}</span></label>{{end}}
       </div>
       <p class="muted">{{template "via" (print $.Lang " " $p.GatewayName)}}</p>
       </fieldset>
@@ -34,17 +34,19 @@
       <fieldset><legend>{{.T "Produk" "Product"}}</legend>
       <div class="choices">
         {{range $g.Products}}
-        <label class="choice"><input type="radio" name="product" value="{{.Slug}}" {{if eq .Slug $p.Slug}}checked{{end}} required>{{if .Image.ID}}<img class="thumb" src="/static/products/{{$.T .Image.ID .Image.EN}}" alt="" loading="lazy">{{end}}<span class="item"><strong>{{$.T .NameID .NameEN}}</strong> <span class="price">{{.FormattedPrice}}</span><span class="detail">{{if not $g.Description.ID}}{{$.T .DescriptionID .DescriptionEN}} {{end}}<small>{{template "via" (print $.Lang " " .GatewayName)}}</small></span></span></label>
+        <label class="choice"><input type="radio" name="product" value="{{.Slug}}" {{if eq .Slug $p.Slug}}checked{{end}} required{{if $off}} disabled{{end}}>{{if .Image.ID}}<img class="thumb" src="/static/products/{{$.T .Image.ID .Image.EN}}" alt="" loading="lazy">{{end}}<span class="item"><strong>{{$.T .NameID .NameEN}}</strong> <span class="price">{{.FormattedPrice}}</span><span class="detail">{{if not $g.Description.ID}}{{$.T .DescriptionID .DescriptionEN}} {{end}}<small>{{template "via" (print $.Lang " " .GatewayName)}}</small></span></span></label>
         {{end}}
       </div>
       </fieldset>
       {{end}}
       <label for="email">{{.T "Email untuk menerima kode" "Email for your code"}}</label>
-      <input type="email" id="email" name="email" autocomplete="email" maxlength="254" required placeholder="{{.T "nama@example.com" "name@example.com"}}">
-      <label class="consent"><input type="checkbox" name="accept" value="yes" required><span>{{if .EN}}I agree to the <a href="{{.Href "/terms"}}">terms</a>, <a href="{{.Href "/refunds"}}">refund policy</a>, and <a href="{{.Href "/privacy"}}">privacy policy</a>.{{else}}Saya menyetujui <a href="{{.Href "/terms"}}">ketentuan</a>, <a href="{{.Href "/refunds"}}">kebijakan pengembalian dana</a>, dan <a href="{{.Href "/privacy"}}">privasi</a>.{{end}}</span></label>
+      <input type="email" id="email" name="email" autocomplete="email" maxlength="254" required{{if $off}} disabled{{end}} placeholder="{{.T "nama@example.com" "name@example.com"}}">
+      <label class="consent"><input type="checkbox" name="accept" value="yes" required{{if $off}} disabled{{end}}><span>{{if .EN}}I agree to the <a href="{{.Href "/terms"}}">terms</a>, <a href="{{.Href "/refunds"}}">refund policy</a>, and <a href="{{.Href "/privacy"}}">privacy policy</a>.{{else}}Saya menyetujui <a href="{{.Href "/terms"}}">ketentuan</a>, <a href="{{.Href "/refunds"}}">kebijakan pengembalian dana</a>, dan <a href="{{.Href "/privacy"}}">privasi</a>.{{end}}</span></label>
       {{if .TurnstileSiteKey}}<div class="cf-turnstile" data-sitekey="{{.TurnstileSiteKey}}" data-action="checkout" data-language="{{.Lang}}"></div><noscript><p>{{.T "Aktifkan JavaScript untuk verifikasi pembayaran." "Enable JavaScript for checkout verification."}}</p></noscript>{{end}}
-      <button type="submit">{{.T "Lanjut ke pembayaran" "Continue to payment"}}</button>
-      <p class="muted">{{.T "Kode muncul di halaman pesanan setelah pembayaran dikonfirmasi, lalu dikirim ke email Anda." "Your code appears on the order page once payment is confirmed, and is emailed to you."}}</p>
+      {{if $off}}<button type="submit" class="soon" disabled>{{.T "Pembayaran segera dibuka" "Checkout opens soon"}}</button>
+      <p class="muted">{{.T "Harga di atas berlaku saat pembayaran dibuka. Setelah membayar, kode muncul di halaman pesanan dan dikirim ke email Anda." "The prices above apply once checkout opens. After payment, your code appears on the order page and is emailed to you."}}</p>
+      {{else}}<button type="submit">{{.T "Lanjut ke pembayaran" "Continue to payment"}}</button>
+      <p class="muted">{{.T "Kode muncul di halaman pesanan setelah pembayaran dikonfirmasi, lalu dikirim ke email Anda." "Your code appears on the order page once payment is confirmed, and is emailed to you."}}</p>{{end}}
     </form>
   </section>
   </main>

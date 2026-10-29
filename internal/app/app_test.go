@@ -20,8 +20,20 @@ func TestDisabledShopNeedsNoCredentials(t *testing.T) {
 	}
 	r := httptest.NewRecorder()
 	h.ServeHTTP(r, httptest.NewRequest("GET", "/", nil))
-	if r.Code != 200 || !strings.Contains(r.Body.String(), "Belum menerima pembayaran") {
-		t.Fatal(r.Code, r.Body.String())
+	// Closed, it still shows the rupiah prices, with checkout disabled and no form token.
+	body := r.Body.String()
+	for _, want := range []string{"Rp 5.000", "Rp 49.000", "Pembayaran segera dibuka", `class="soon" disabled`} {
+		if r.Code != 200 || !strings.Contains(body, want) {
+			t.Fatalf("closed shop page lacks %q: %d %s", want, r.Code, body)
+		}
+	}
+	if strings.Contains(body, `name="csrf"`) || r.Header().Get("Set-Cookie") != "" {
+		t.Fatal("closed shop issues a checkout token")
+	}
+	r = httptest.NewRecorder()
+	h.ServeHTTP(r, httptest.NewRequest("POST", "/checkout", nil))
+	if r.Code != 404 {
+		t.Fatalf("closed shop accepts checkout: %d", r.Code)
 	}
 	if !strings.Contains(r.Body.String(), "Sandbox") {
 		t.Fatal("closed sandbox shop lost its band")

@@ -12,7 +12,7 @@
   {{template "header" .}}
   <main>
   <h1>{{.T "Bayar sekali, dapatkan kode." "Pay once, get your code."}}</h1>
-  {{if .Shop}}
+  {{if .Groups}}
   <section aria-labelledby="projects-title">
     <h2 id="projects-title">{{.T "Pilih proyek" "Choose a project"}}</h2>
     <ul class="cards">
@@ -23,6 +23,7 @@
       </a></li>
     {{end}}
     </ul>
+    {{if not .Shop}}<p class="closed">{{.T "Pembayaran segera dibuka." "Checkout opens soon."}}</p>{{end}}
   </section>
   {{else}}<p class="closed">{{.T "Belum menerima pembayaran." "Checkout is not open yet."}}</p>{{end}}
   </main>

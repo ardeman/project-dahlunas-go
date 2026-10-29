@@ -32,6 +32,7 @@ A change is done only when the **Checks** command in `README.md` passes. If you 
 
 Record architectural choices here as one line each: date, decision, reason.
 
+- 2026-10-29: With checkout off, the shop still shows the catalog with rupiah prices and a disabled form ("Pembayaran segera dibuka"), not just a closed notice; Midtrans's review needs prices on the registered site, and its live keys come only after approval.
 - 2026-10-26: CI is two workflows, Deploy for pushes to `main` that change the service (running the checks through a reusable call first) and Checks for pull requests and docs or CI pushes, chosen by GitHub's path filters; a run's name is fixed before any job runs, so one workflow couldn't show in the Actions list whether it deployed. A push changing both kinds runs the checks twice.
 
 - 2026-10-26: Bedug codes are bound to one device: the app activates a code through `POST /activations` with a random install ID (never a hardware ID), Dahlunas keeps a per-code record with the install ID's hash and signs an activation the app checks offline. Entering the code elsewhere moves it, at most 3 times (then support resets it); the weekly check never moves it. Bedug goes online, while children's apps stay offline-only, so activation is a per-project catalog opt-in. Contract: `docs/activation.md`.
