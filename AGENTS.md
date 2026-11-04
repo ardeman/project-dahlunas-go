@@ -26,7 +26,7 @@ A change is done only when the **Checks** command in `README.md` passes. If you 
 ## Keeping docs current
 
 - When you change a command, the layout or the setup, update `README.md`. When you change a convention or rule, update this file.
-- `CLAUDE.md` and `GEMINI.md` must contain only the import of this file.
+- `CLAUDE.md` and `GEMINI.md` must contain only the import of this file, and `.github/copilot-instructions.md` only a pointer to it.
 
 ## Decisions
 
