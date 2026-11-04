@@ -177,6 +177,15 @@ func TestPoliciesAndDisabledCheckout(t *testing.T) {
 		if w.Code != 200 || !strings.Contains(w.Body.String(), `lang="en"`) {
 			t.Fatal(path, w.Code)
 		}
+		// Payment reviewers must see that the codes are licenses for Ardeman's own apps, not resold vouchers.
+		if !strings.Contains(w.Body.String(), "not third-party vouchers") {
+			t.Fatal(path, "footer does not say what the codes are")
+		}
+	}
+	terms := httptest.NewRecorder()
+	h.ServeHTTP(terms, httptest.NewRequest("GET", "/terms", nil))
+	if !strings.Contains(terms.Body.String(), "bukan voucher atau kode pihak ketiga yang dijual kembali") {
+		t.Fatal("terms do not say the codes are not resold")
 	}
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, httptest.NewRequest("POST", "/checkout", nil))

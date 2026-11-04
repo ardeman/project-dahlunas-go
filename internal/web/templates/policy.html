@@ -2,6 +2,7 @@
 <body>{{template "header" .}}<main>
 {{if eq .Path "/terms"}}
 <h1>{{.T "Ketentuan" "Terms"}}</h1>
+<p>{{.T "Dahlunas menjual kode lisensi untuk aplikasi yang dibuat dan dimiliki Ardeman sendiri. Kode dibuat dan ditandatangani oleh Dahlunas, hanya berlaku di aplikasi tersebut, tidak bernilai uang, dan bukan voucher atau kode pihak ketiga yang dijual kembali." "Dahlunas sells license codes for apps Ardeman makes and owns. Dahlunas creates and signs each code; it works only in that app, has no cash value, and is not a resold third-party voucher or code."}}</p>
 <p>{{.T "Setiap kode adalah pembelian satu kali. Fitur dan versi aplikasi yang didukung tercantum pada setiap produk." "Each code is a one-time purchase. Each product lists its features and supported app versions."}}</p>
 {{if .Shop}}{{range .Shop.Products}}<h2>{{$.T .NameID .NameEN}} · {{.FormattedPrice}}</h2><p>{{$.T .DescriptionID .DescriptionEN}}</p>{{end}}{{end}}
 <p>{{.T "Periksa versi aplikasi dan alamat email sebelum membayar. Kode muncul di halaman pesanan setelah pembayaran dikonfirmasi, lalu dikirim ke email Anda. Pembayaran diproses oleh Midtrans (QRIS) atau Lemon Squeezy (USD), sesuai produk; Dahlunas tidak menerima detail kartu atau rekening Anda." "Check your app version and email address before paying. Your code appears on the order page once payment is confirmed, and is emailed to you. Midtrans (QRIS) or Lemon Squeezy (USD) processes the payment, depending on the product; Dahlunas never receives your card or bank account details."}}</p>
