@@ -49,6 +49,11 @@ The top level is a nonempty array of projects. Each project contains:
   `coba-lagi-icon.png`.
 - `image` (optional): a screenshot shown on the card and the project's page, with an `id` and
   an `en` file name so each language sees its own.
+- `about` (optional): paragraphs on the project's page, each one line with `id`
+  and `en` text: what the app is, who it's for, what is free, what a code
+  unlocks, and how to use it. Payment reviewers (Midtrans) look for complete
+  product descriptions here.
+- `website` (optional): the project's own `https` site, linked from its page.
 - `activation` (optional): `true` binds each code to one device at a time
   through `POST /activations` ([device activation](activation.md)). Only for apps
   that may go online; never for children's apps. Say so in the products'

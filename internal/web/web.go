@@ -75,6 +75,13 @@ func Handler(options ...Options) http.Handler {
 			Groups []shop.Group
 		}{p, groups})
 	})
+	mux.HandleFunc("GET /about", func(w http.ResponseWriter, r *http.Request) {
+		p := newPage(r, config)
+		render(w, p, "about.html", struct {
+			page
+			Groups []shop.Group
+		}{p, config.groups()})
+	})
 	mux.HandleFunc("GET /projects/{slug}", func(w http.ResponseWriter, r *http.Request) {
 		for _, g := range config.groups() {
 			if g.Slug == r.PathValue("slug") {

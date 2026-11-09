@@ -16,6 +16,29 @@
       "id": "coba-lagi-progress-id.jpg",
       "en": "coba-lagi-progress-en.jpg"
     },
+    "about": [
+      {
+        "id": "Coba Lagi adalah aplikasi belajar coding untuk anak, dalam Bahasa Indonesia dan Inggris. Anak menemani Koba si robot menjelajahi planet-planet di luar angkasa; setiap planet mengajarkan satu konsep coding, seperti urutan langkah, perulangan, blok buatan sendiri, percabangan, dan variabel.",
+        "en": "Coba Lagi is a coding-learning app for children, in Indonesian and English. Children join Koba the robot exploring planets in space; each planet teaches one coding idea, such as sequences, loops, their own blocks, conditions, and variables."
+      },
+      {
+        "id": "Anak yang belum lancar membaca (sekitar 4–7 tahun) menyusun blok bergambar dengan petunjuk suara. Anak yang sudah membaca (sekitar 7–14 tahun) mengetik program yang sama sebagai kode. Permainan pemanasan singkat menentukan titik awal setiap anak, dan setelah setiap pelajaran aplikasi memilih untuk lanjut, berlatih, atau mengulang.",
+        "en": "Children who don't read yet (about 4–7) arrange picture blocks with spoken instructions. Readers (about 7–14) type the same program as code. A short warm-up game picks each child's starting point, and after every lesson the app chooses to advance, practise, or review."
+      },
+      {
+        "id": "Aplikasinya gratis: di App Store dan Google Play, serta versi GitHub untuk Android, Windows, macOS, dan Linux. Versi gratis berisi semua planet untuk satu pemain.",
+        "en": "The app is free: on the App Store and Google Play, and as GitHub builds for Android, Windows, macOS, and Linux. The free version has every planet for one player."
+      },
+      {
+        "id": "Yang Anda beli di sini adalah kode lisensi sponsor untuk versi GitHub: pembelian satu kali, bukan langganan. Kode membuka hingga enam pemain dan laporan perkembangan untuk orang tua (soal yang selesai, waktu bermain, dan kemajuan di setiap planet). Ketiga jumlah membuka fitur yang sama; pilih sesuai dukungan Anda.",
+        "en": "What you buy here is a sponsor license code for GitHub builds: a one-time purchase, not a subscription. The code unlocks up to six players and a progress report for parents (puzzles solved, play time, and progress on every planet). All three amounts unlock the same features; pick the one that matches your support."
+      },
+      {
+        "id": "Setelah pembayaran dikonfirmasi, kode muncul di halaman pesanan dan dikirim ke email Anda, biasanya dalam beberapa menit. Buka area orang tua di aplikasi → Punya kode?, lalu tempel kodenya; aplikasi memeriksanya tanpa internet. Kode tidak berlaku di versi App Store atau Google Play, yang memakai pembayaran di dalam aplikasi.",
+        "en": "Once payment is confirmed, the code appears on the order page and is emailed to you, usually within minutes. Open the parent area in the app → Have a code?, and paste the code; the app checks it offline. Codes do not work in App Store or Google Play builds, which use in-app purchase."
+      }
+    ],
+    "website": "https://cobalagi.ardeman.com",
     "email": {
       "subject": {
         "id": "Kode Coba Lagi",

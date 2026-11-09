@@ -14,7 +14,7 @@ import (
 )
 
 func TestCatalogValidation(t *testing.T) {
-	for _, name := range []string{"valid", "duplicate project", "duplicate slug", "zero project", "zero key", "zero product", "zero price", "too expensive", "missing language", "missing instructions", "subject newline", "invalid slug", "no products", "remote image", "half image", "multiline name"} {
+	for _, name := range []string{"valid", "duplicate project", "duplicate slug", "zero project", "zero key", "zero product", "zero price", "too expensive", "missing language", "missing instructions", "subject newline", "invalid slug", "no products", "remote image", "half image", "multiline name", "half about", "multiline about", "http website"} {
 		t.Run(name, func(t *testing.T) {
 			var projects []ProjectConfig
 			json.Unmarshal(defaultCatalog, &projects)
@@ -50,6 +50,12 @@ func TestCatalogValidation(t *testing.T) {
 				p.Products[0].Image = Text{ID: "shot.png"}
 			case "multiline name":
 				p.Name.EN = "Coba\nLagi"
+			case "half about":
+				p.About = append(p.About, Text{ID: "Hanya bahasa Indonesia."})
+			case "multiline about":
+				p.About[0].EN += "\n<script>"
+			case "http website":
+				p.Website = "http://cobalagi.ardeman.com"
 			}
 			b, _ := json.Marshal(projects)
 			products, err := ParseCatalog(bytes.NewReader(b))

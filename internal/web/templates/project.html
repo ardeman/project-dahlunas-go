@@ -18,6 +18,8 @@
     <h1>{{if $g.Icon}}<img class="icon" src="/static/products/{{$g.Icon}}" alt="" width="72" height="72">{{end}}<span>{{if $g.Name.ID}}{{.T $g.Name.ID $g.Name.EN}}{{else}}{{.T $p.NameID $p.NameEN}}{{end}}{{if $g.Tagline.ID}}<small class="tagline">{{.T $g.Tagline.ID $g.Tagline.EN}}</small>{{end}}</span></h1>
     {{if $g.Image.ID}}<img class="shot" src="/static/products/{{.T $g.Image.ID $g.Image.EN}}" alt="{{.T "Tangkapan layar" "Screenshot"}} {{.T $g.Name.ID $g.Name.EN}}">{{end}}
     {{if $g.Description.ID}}<p class="about">{{.T $g.Description.ID $g.Description.EN}}</p>{{end}}
+    {{range $g.About}}<p>{{$.T .ID .EN}}</p>{{end}}
+    {{if $g.Website}}<p><a href="{{$g.Website}}">{{.T "Situs" "Website"}} {{if $g.Name.ID}}{{.T $g.Name.ID $g.Name.EN}}{{else}}{{.T $p.NameID $p.NameEN}}{{end}} →</a></p>{{end}}
   </div>
   <section aria-labelledby="product-title">
     <h2 id="product-title">{{if $g.Amounts}}{{.T "Pilih jumlah" "Choose an amount"}}{{else}}{{.T "Pilih produk" "Choose a product"}}{{end}}</h2>

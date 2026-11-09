@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/ardeman/project-dahlunas-go/internal/payment"
 	"io"
+	"net/url"
 	"regexp"
 	"strconv"
 	"strings"
@@ -30,13 +31,17 @@ type EmailCopy struct {
 // project's page, /projects/<slug>, and defaults to the project ID. Activation binds its codes to one
 // device through Dahlunas; children's apps never set it.
 type ProjectConfig struct {
-	ID         uint16          `json:"id"`
-	KeyID      uint8           `json:"key_id"`
-	Slug       string          `json:"slug,omitempty"`
-	Name       Text            `json:"name"`
-	Tagline    Text            `json:"tagline"`
-	Icon       string          `json:"icon,omitempty"`
-	Image      Text            `json:"image"`
+	ID      uint16 `json:"id"`
+	KeyID   uint8  `json:"key_id"`
+	Slug    string `json:"slug,omitempty"`
+	Name    Text   `json:"name"`
+	Tagline Text   `json:"tagline"`
+	Icon    string `json:"icon,omitempty"`
+	Image   Text   `json:"image"`
+	// About describes the project on its page, one paragraph per entry;
+	// Website is its https home page.
+	About      []Text          `json:"about,omitempty"`
+	Website    string          `json:"website,omitempty"`
 	Activation bool            `json:"activation,omitempty"`
 	Email      EmailCopy       `json:"email"`
 	Products   []ProductConfig `json:"products"`
@@ -102,6 +107,16 @@ func ParseCatalog(r io.Reader) ([]Product, error) {
 		if !optional(project.Name, line) || !optional(project.Tagline, line) || (project.Icon != "" && !asset(project.Icon)) || !optional(project.Image, asset) {
 			return nil, fmt.Errorf("catalog: project %d needs a bilingual one-line name and tagline, and image/icon file names such as coba-lagi-icon.png", project.ID)
 		}
+		for _, paragraph := range project.About {
+			if !line(paragraph.ID) || !line(paragraph.EN) {
+				return nil, fmt.Errorf("catalog: project %d needs each about paragraph in both languages, on one line", project.ID)
+			}
+		}
+		if project.Website != "" {
+			if u, err := url.Parse(project.Website); err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil {
+				return nil, fmt.Errorf("catalog: project %d website must be an https URL", project.ID)
+			}
+		}
 		copy := project.Email
 		if !validText(copy.Subject) || strings.ContainsAny(copy.Subject.ID+copy.Subject.EN, "\n") || !validText(copy.ThankYou) || !validText(copy.Instructions) {
 			return nil, fmt.Errorf("catalog: project %d needs bilingual email wording", project.ID)
@@ -121,7 +136,7 @@ func ParseCatalog(r io.Reader) ([]Product, error) {
 				return nil, errors.New("catalog: require Midtrans/IDR or Lemon Squeezy/USD with numeric variant_id (USD limit 100000 cents)")
 			}
 			slugs[p.Slug] = true
-			products = append(products, Product{Slug: p.Slug, NameID: p.Name.ID, NameEN: p.Name.EN, DescriptionID: p.Description.ID, DescriptionEN: p.Description.EN, Price: p.Price, Project: project.ID, Product: p.ID, KeyID: project.KeyID, Delivery: copy, Gateway: gateway, Currency: currency, VariantID: p.VariantID, ProjectSlug: project.Slug, ProjectName: project.Name, Tagline: project.Tagline, Icon: project.Icon, ProjectImage: project.Image, Image: p.Image, Activation: project.Activation})
+			products = append(products, Product{Slug: p.Slug, NameID: p.Name.ID, NameEN: p.Name.EN, DescriptionID: p.Description.ID, DescriptionEN: p.Description.EN, Price: p.Price, Project: project.ID, Product: p.ID, KeyID: project.KeyID, Delivery: copy, Gateway: gateway, Currency: currency, VariantID: p.VariantID, ProjectSlug: project.Slug, ProjectName: project.Name, Tagline: project.Tagline, Icon: project.Icon, ProjectImage: project.Image, About: project.About, Website: project.Website, Image: p.Image, Activation: project.Activation})
 		}
 	}
 	return products, nil

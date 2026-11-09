@@ -39,6 +39,9 @@ type Product struct {
 	Tagline             Text
 	Icon                string
 	ProjectImage, Image Text
+	// About and Website describe the project on its page; orders never need them.
+	About   []Text `json:"-"`
+	Website string `json:"-"`
 	// Activation lets a code be activated on one device at a time.
 	Activation bool
 }
@@ -137,6 +140,8 @@ type Group struct {
 	Tagline Text
 	Icon    string
 	Image   Text
+	About   []Text
+	Website string
 	// Description is set when every product shares it, so it shows once.
 	Description Text
 	// Amounts is set when the products differ only in price, so the shop
@@ -169,7 +174,7 @@ func Groups(products []Product) []Group {
 			if slug == "" {
 				slug = strconv.Itoa(int(p.Project))
 			}
-			groups = append(groups, Group{Slug: slug, Name: p.ProjectName, Tagline: p.Tagline, Icon: p.Icon, Image: p.ProjectImage, Description: Text{p.DescriptionID, p.DescriptionEN}, Amounts: true})
+			groups = append(groups, Group{Slug: slug, Name: p.ProjectName, Tagline: p.Tagline, Icon: p.Icon, Image: p.ProjectImage, About: p.About, Website: p.Website, Description: Text{p.DescriptionID, p.DescriptionEN}, Amounts: true})
 		}
 		g := &groups[i]
 		if g.Description != (Text{p.DescriptionID, p.DescriptionEN}) {

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="{{.Lang}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{if not .Production}}Sandbox · {{end}}{{.T "Tentang" "About"}} · Dahlunas</title>
+  <link rel="stylesheet" href="/static/shop.css">
+  <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+</head>
+<body>
+  {{template "header" .}}
+  <main>
+  <h1>{{.T "Tentang Dahlunas" "About Dahlunas"}}</h1>
+  <p>{{.T "Dahlunas adalah toko online perorangan milik Ardeman, pengembang perangkat lunak di Jakarta, Indonesia. Dahlunas menjual kode lisensi digital untuk aplikasi yang Ardeman buat dan miliki sendiri. Dahlunas tidak menjual produk atau voucher pihak lain." "Dahlunas is the online shop of Ardeman, an individual software developer in Jakarta, Indonesia. Dahlunas sells digital license codes for apps that Ardeman makes and owns. It does not sell other businesses' products or vouchers."}}</p>
+  <dl class="profile">
+    <dt>{{.T "Pemilik" "Owner"}}</dt><dd>{{.T "Ardeman (perorangan)" "Ardeman (individual)"}}</dd>
+    <dt>{{.T "Bidang usaha" "Business"}}</dt><dd>{{.T "Pengembangan perangkat lunak: aplikasi dan kode lisensi digital" "Software development: apps and digital license codes"}}</dd>
+    <dt>{{.T "Lokasi" "Location"}}</dt><dd>Jakarta, Indonesia</dd>
+    {{if .Support}}<dt>{{.T "Kontak" "Contact"}}</dt><dd><a href="mailto:{{.Support}}">{{.Support}}</a></dd>{{end}}
+  </dl>
+  {{if .Groups}}<h2>{{.T "Produk" "Products"}}</h2>
+  <ul class="profile-products">
+    {{range .Groups}}<li><a href="{{$.Href (print "/projects/" .Slug)}}">{{if .Name.ID}}{{$.T .Name.ID .Name.EN}}{{else}}{{with index .Products 0}}{{$.T .NameID .NameEN}}{{end}}{{end}}</a>{{if .Tagline.ID}}: {{$.T .Tagline.ID .Tagline.EN}}{{end}}. {{$.T "Mulai" "From"}} {{.From.FormattedPrice}}.</li>{{end}}
+  </ul>{{end}}
+  <h2>{{.T "Cara membeli" "How buying works"}}</h2>
+  <ol>
+    <li>{{.T "Pilih produk dan jumlah di halaman aplikasi, lalu isi email Anda." "Choose a product and amount on the app's page, then enter your email."}}</li>
+    <li>{{.T "Bayar lewat Midtrans (QRIS). Dahlunas tidak menerima detail kartu atau rekening Anda." "Pay through Midtrans (QRIS). Dahlunas never receives your card or bank details."}}</li>
+    <li>{{.T "Setelah pembayaran dikonfirmasi, kode muncul di halaman pesanan dan dikirim ke email Anda. Produk digital, tanpa pengiriman barang." "Once payment is confirmed, your code appears on the order page and is emailed to you. Digital product; nothing is shipped."}}</li>
+    <li>{{.T "Masukkan kode di aplikasi, sesuai petunjuk di halaman produk." "Enter the code in the app, as the product page explains."}}</li>
+  </ol>
+  <p>{{if .EN}}Questions, problems with an order, or refund requests: email {{if .Support}}<a href="mailto:{{.Support}}">{{.Support}}</a>{{else}}us{{end}}. The terms, refund policy and privacy policy are linked below.{{else}}Pertanyaan, kendala pesanan, atau permintaan pengembalian dana: kirim email ke {{if .Support}}<a href="mailto:{{.Support}}">{{.Support}}</a>{{else}}kami{{end}}. Ketentuan, kebijakan pengembalian dana, dan privasi tertaut di bawah.{{end}}</p>
+  </main>
+  {{template "footer" .}}
+</body>
+</html>

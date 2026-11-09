@@ -50,11 +50,11 @@ func TestSandboxLabel(t *testing.T) {
 // policy links once, in the footer.
 func TestNavigationOnEveryPage(t *testing.T) {
 	h := Handler()
-	for _, path := range []string{"/", "/terms", "/refunds", "/privacy", "/missing"} {
+	for _, path := range []string{"/", "/about", "/terms", "/refunds", "/privacy", "/missing"} {
 		rec := httptest.NewRecorder()
 		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path+"?lang=en", nil))
 		body := rec.Body.String()
-		for _, link := range []string{"/terms?lang=en", "/refunds?lang=en", "/privacy?lang=en"} {
+		for _, link := range []string{"/about?lang=en", "/terms?lang=en", "/refunds?lang=en", "/privacy?lang=en"} {
 			if n := strings.Count(body, `href="`+link+`"`); n != 1 {
 				t.Errorf("%s links to %s %d times, want once", path, link, n)
 			}
@@ -110,5 +110,33 @@ func TestCatalogImagesShip(t *testing.T) {
 	products[0].Image = shop.Text{ID: "missing.png", EN: "missing.png"}
 	if CheckImages(products) == nil {
 		t.Fatal("accepted a missing image")
+	}
+}
+
+// The about page is the shop's business profile: owner, location, contact,
+// and each project on show with its lowest price.
+func TestAboutProfile(t *testing.T) {
+	products := shop.CobaLagi()
+	h := Handler(Options{Catalog: products, Support: "help@example.com"})
+	rec := httptest.NewRecorder()
+	h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/about?lang=id", nil))
+	body := rec.Body.String()
+	for _, want := range []string{"Tentang Dahlunas", "Ardeman (perorangan)", "Jakarta, Indonesia", "mailto:help@example.com", `href="/projects/coba-lagi?lang=id"`, "Rp 5.000"} {
+		if !strings.Contains(body, want) {
+			t.Errorf("about page lacks %q", want)
+		}
+	}
+}
+
+// A project's page shows its about paragraphs and website.
+func TestProjectAbout(t *testing.T) {
+	products := shop.CobaLagi()
+	rec := httptest.NewRecorder()
+	Handler(Options{Catalog: products}).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/projects/coba-lagi?lang=en", nil))
+	body := rec.Body.String()
+	for _, want := range []string{"Koba the robot", "up to six players", `href="https://cobalagi.ardeman.com"`} {
+		if !strings.Contains(body, want) {
+			t.Errorf("project page lacks %q", want)
+		}
 	}
 }
