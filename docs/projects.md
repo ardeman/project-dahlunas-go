@@ -26,11 +26,12 @@ sandbox, 2 in production), so each environment has its own catalog file.
 | ID | Project | Sandbox | Production |
 | --- | --- | --- | --- |
 | 1 | Coba Lagi: sponsor codes for GitHub builds | key 1 | key 2 (embedded default) |
-| 2 | Bedug: infaq codes for Windows and Linux builds (Microsoft Store, Flathub), one device at a time | key 1 ([`catalog-sandbox.json`](../config/catalog-sandbox.json)) | not yet: added once Bedug's desktop builds accept codes |
+| 2 | Bedug: infaq codes for Windows and Linux builds (Microsoft Store, Flathub), one device at a time | key 1 ([`catalog-sandbox.json`](../config/catalog-sandbox.json)) | not yet: production key and catalog (desktop builds already accept sandbox codes) |
+| 3 | Catat Saja: Plus subscription written to the account | — | — (planned; README → Roadmap) |
 
 Bedug's phone and Mac App Store builds keep store in-app purchase, as store rules
-require; its codes, like Coba Lagi's, are checked offline. Catat Saja is planned
-as a subscription, which needs new Dahlunas work (README → Roadmap).
+require; its codes, like Coba Lagi's, are checked offline. Catat Saja Plus is a
+subscription delivered to the buyer's account, not a code (README → Roadmap).
 
 The top level is a nonempty array of projects. Each project contains:
 
