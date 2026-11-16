@@ -115,7 +115,8 @@ and [widget setup](https://developers.cloudflare.com/turnstile/get-started/clien
 
 - `POST /checkout` accepts a catalog slug and delivery email, with consent and
   same-browser CSRF protection. Amounts come from the catalog, never the browser.
-  Only QRIS is offered initially. Snap opens on Dahlunas's own page.
+  Snap is embedded on the order page as soon as it loads; it lists whichever
+  channels Midtrans has activated for the merchant.
 - Orders are stored before a gateway session is created. A failed gateway request
   can leave an unpaid order; it never creates a code. Retrying checkout starts a
   new order. Each order has a separate random private viewing token.
