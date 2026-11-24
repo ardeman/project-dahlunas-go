@@ -33,5 +33,5 @@
 <p class="muted">{{.T "Pesanan" "Order"}}: {{.Order.ID}}</p>
 <p>{{if .Order.Product.Account}}{{.T "Simpan tautan ini secara pribadi untuk melihat status pesanan." "Keep this link private to check your order status."}}{{else}}{{.T "Simpan tautan ini secara pribadi untuk melihat kode Anda." "Keep this link private to retrieve your code."}}{{end}}</p>
 </div>
-{{if and (not .Order.Paid) (eq .Order.Product.GatewayName "midtrans") .Order.SnapToken}}{{if or (eq .Order.State "pending") (eq .Order.State "capture")}}<div id="snap-container" data-snap-token="{{.Order.SnapToken}}"></div>{{end}}{{end}}
+{{if and (not .Order.Paid) (eq .Order.Product.GatewayName "midtrans") .Order.SnapToken}}{{if or (eq .Order.State "pending") (eq .Order.State "capture")}}<div id="snap-container" data-snap-token="{{.Order.SnapToken}}"></div><button type="button" id="snap-resume" hidden>{{.T "Lanjutkan pembayaran" "Continue payment"}}</button>{{end}}{{end}}
 </main>{{template "footer" .}}</body></html>

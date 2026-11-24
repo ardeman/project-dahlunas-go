@@ -68,7 +68,7 @@ func TestAccountCheckoutPage(t *testing.T) {
 	s.Store.(*webStore).orders[id] = shop.Order{ID: id, ViewToken: view, Product: products[len(products)-2], State: "pending", SnapToken: "snap"}
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, httptest.NewRequest("GET", "https://shop.example/orders/"+id+"/"+view+"?lang=en", nil))
-	if w.Code != 200 || !strings.Contains(w.Body.String(), "Catat Saja Plus · 3 months · Rp 49.000") {
+	if w.Code != 200 || !strings.Contains(w.Body.String(), "Catat Saja Plus · 3 months · Rp 49.000") || !strings.Contains(w.Body.String(), `id="snap-resume" hidden>Continue payment<`) {
 		t.Fatal(w.Code, w.Body.String())
 	}
 }

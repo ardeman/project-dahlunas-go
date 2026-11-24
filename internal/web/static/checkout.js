@@ -17,6 +17,8 @@
       try { window.snap.hide(); } catch (_) {}
     }
     box.remove();
+    const resume = document.getElementById('snap-resume');
+    if (resume) resume.remove();
   }
 
   function openSnap(attempt) {
@@ -35,6 +37,15 @@
     window.snap.embed(box.dataset.snapToken, {
       embedId: 'snap-container',
       language: en ? 'en' : 'id',
+      // Snap's own X removes its frame, so offer a way back to it.
+      onClose: function () {
+        const resume = document.getElementById('snap-resume');
+        delete box.dataset.snapReady;
+        if (!resume) return;
+        box.hidden = true;
+        resume.hidden = false;
+        resume.focus();
+      },
       onSuccess: function () { window.location.reload(); },
       onError: function () {
         const current = document.getElementById('payment-error');
@@ -49,6 +60,17 @@
       clearSnap();
     }
   });
+
+  const resume = document.getElementById('snap-resume');
+  if (resume) {
+    resume.addEventListener('click', function () {
+      const box = document.getElementById('snap-container');
+      if (!box) return;
+      resume.hidden = true;
+      box.hidden = false;
+      openSnap(0);
+    });
+  }
 
   openSnap(0);
 })();
