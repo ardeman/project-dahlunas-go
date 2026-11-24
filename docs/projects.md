@@ -27,7 +27,7 @@ sandbox, 2 in production), so each environment has its own catalog file.
 | --- | --- | --- | --- |
 | 1 | Coba Lagi: sponsor codes for GitHub builds | key 1 | key 2 (embedded default) |
 | 2 | Bedug: infaq codes for Windows and Linux builds from GitHub releases, one device at a time | key 1 ([`catalog-sandbox.json`](../config/catalog-sandbox.json)) | not yet: production key and catalog (desktop builds already accept sandbox codes) |
-| 3 | Catat Saja: prepaid Plus written to the account (`delivery: account`) | in [`catalog-sandbox.json`](../config/catalog-sandbox.json) | set `SHOP_CATALOG_FILE` + deliver URL/secrets (README → Roadmap) |
+| 3 | Catat Saja: prepaid Plus written to the account (`delivery: account`) | in [`catalog-sandbox.json`](../config/catalog-sandbox.json) | in [`catalog-production.json`](../config/catalog-production.json) |
 
 Bedug's phone and Mac App Store builds keep store in-app purchase, as store rules
 require; its codes, like Coba Lagi's, are checked offline. Catat Saja Plus is a

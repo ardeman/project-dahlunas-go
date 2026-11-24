@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ardeman/project-dahlunas-go/internal/account"
 	"github.com/ardeman/project-dahlunas-go/internal/shop"
 )
 
@@ -27,7 +28,7 @@ func TestProductionCatalogListsSoonProjectsWithoutSelling(t *testing.T) {
 			t.Fatal(got)
 		}
 	}
-	s := &shop.Service{Store: &webStore{orders: map[string]shop.Order{}}, Gateway: &webGateway{}, Products: products, BaseURL: "https://shop.example"}
+	s := &shop.Service{Store: &webStore{orders: map[string]shop.Order{}}, Gateway: &webGateway{}, Products: products, BaseURL: "https://shop.example", CheckoutSecret: "secret", Accounts: &account.Deliverer{}}
 	h := Handler(Options{Shop: s, ClientKey: "public-client", Support: "support@example.com", RefundID: "Uji", RefundEN: "Test"})
 	get := func(path string) string {
 		w := httptest.NewRecorder()
@@ -37,16 +38,35 @@ func TestProductionCatalogListsSoonProjectsWithoutSelling(t *testing.T) {
 		}
 		return w.Body.String()
 	}
-	if home := get("/"); strings.Count(home, `class="card"`) != 3 || strings.Count(home, "Coming soon") != 2 || strings.Count(home, "From Rp 5.000") != 1 {
+	if home := get("/"); strings.Count(home, `class="card"`) != 3 || strings.Count(home, "Coming soon") != 1 || strings.Count(home, "From Rp 19.000") != 1 || strings.Count(home, "From Rp 5.000") != 1 {
 		t.Fatal(home)
 	}
-	if about := get("/about"); strings.Count(about, "Coming soon") != 2 || strings.Contains(about, "repaid access") {
+	if about := get("/about"); strings.Count(about, "Coming soon") != 1 || !strings.Contains(about, "repaid access") {
 		t.Fatal(about)
 	}
-	if terms := get("/terms"); strings.Contains(terms, "Bedug") || strings.Contains(terms, "Catat Saja") {
+	if terms := get("/terms"); strings.Contains(terms, "Bedug") || !strings.Contains(terms, "Catat Saja") {
 		t.Fatal(terms)
 	}
-	for _, slug := range []string{"bedug", "catat-saja"} {
+	plus := map[int]int64{}
+	for _, p := range products {
+		if p.ProjectSlug == "catat-saja" {
+			if !p.Account || p.Soon {
+				t.Fatal(p)
+			}
+			plus[p.Months] = p.Price
+		}
+	}
+	if len(plus) != 3 || plus[1] != 19000 || plus[3] != 49000 || plus[12] != 149000 {
+		t.Fatal(plus)
+	}
+	// Plus is bought only from inside Catat Saja, which supplies the account.
+	if page := get("/projects/catat-saja"); !strings.Contains(page, "Open from Catat Saja") || !strings.Contains(page, "Rp 149.000") || strings.Contains(page, "Continue to payment") {
+		t.Fatal(page)
+	}
+	if _, err := s.Create(context.Background(), "catat-saja-1m", "buyer@example.com", ""); !errors.Is(err, shop.ErrInput) {
+		t.Fatal(err)
+	}
+	for _, slug := range []string{"bedug"} {
 		if page := get("/projects/" + slug); !strings.Contains(page, "Not on sale yet") || strings.Contains(page, "<form") || strings.Contains(page, "Rp ") {
 			t.Fatal(page)
 		}
