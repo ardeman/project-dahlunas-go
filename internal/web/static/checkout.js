@@ -17,7 +17,9 @@
     if (!view || view.hidden === !open) return;
     view.hidden = !open;
     document.body.classList.toggle('paying', open);
-    document.querySelectorAll('body > :not(#payment):not(script)').forEach(function (part) {
+    // Name our own parts: Snap keeps its iframe in the body until it embeds it,
+    // and an inert iframe takes no clicks.
+    document.querySelectorAll('.sandbox, body > header, body > main, body > footer').forEach(function (part) {
       part.inert = open;
     });
     const target = document.getElementById(open ? 'payment-back' : 'snap-resume');
