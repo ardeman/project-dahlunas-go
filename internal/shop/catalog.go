@@ -43,6 +43,9 @@ type ProjectConfig struct {
 	About      []Text `json:"about,omitempty"`
 	Website    string `json:"website,omitempty"`
 	Activation bool   `json:"activation,omitempty"`
+	// Soon lists the project without selling it: no prices or checkout, and no
+	// signing key or delivery settings needed yet.
+	Soon bool `json:"soon,omitempty"`
 	// Delivery is "code" (default unlock codes) or "account" (Catat Saja Plus).
 	Delivery string          `json:"delivery,omitempty"`
 	Email    EmailCopy       `json:"email"`
@@ -104,7 +107,7 @@ func ParseCatalog(r io.Reader) ([]Product, error) {
 		if project.ID == 0 || projectIDs[project.ID] || len(project.Products) == 0 {
 			return nil, errors.New("catalog: project IDs must be unique and nonzero, with products")
 		}
-		if !account && project.KeyID == 0 {
+		if !account && !project.Soon && project.KeyID == 0 {
 			return nil, errors.New("catalog: code projects need a nonzero key_id")
 		}
 		if account && project.KeyID != 0 {
@@ -159,7 +162,7 @@ func ParseCatalog(r io.Reader) ([]Product, error) {
 				return nil, errors.New("catalog: require Midtrans/IDR or Lemon Squeezy/USD with numeric variant_id (USD limit 100000 cents)")
 			}
 			slugs[p.Slug] = true
-			products = append(products, Product{Slug: p.Slug, NameID: p.Name.ID, NameEN: p.Name.EN, DescriptionID: p.Description.ID, DescriptionEN: p.Description.EN, Price: p.Price, Project: project.ID, Product: p.ID, KeyID: project.KeyID, Months: p.Months, Account: account, Delivery: copy, Gateway: gateway, Currency: currency, VariantID: p.VariantID, ProjectSlug: project.Slug, ProjectName: project.Name, Tagline: project.Tagline, Icon: project.Icon, ProjectImage: project.Image, About: project.About, Website: project.Website, Image: p.Image, Activation: project.Activation})
+			products = append(products, Product{Slug: p.Slug, NameID: p.Name.ID, NameEN: p.Name.EN, DescriptionID: p.Description.ID, DescriptionEN: p.Description.EN, Price: p.Price, Project: project.ID, Product: p.ID, KeyID: project.KeyID, Months: p.Months, Account: account, Soon: project.Soon, Delivery: copy, Gateway: gateway, Currency: currency, VariantID: p.VariantID, ProjectSlug: project.Slug, ProjectName: project.Name, Tagline: project.Tagline, Icon: project.Icon, ProjectImage: project.Image, About: project.About, Website: project.Website, Image: p.Image, Activation: project.Activation})
 		}
 	}
 	return products, nil

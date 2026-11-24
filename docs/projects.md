@@ -64,6 +64,10 @@ The top level is a nonempty array of projects. Each project contains:
   `months` 1–120). Account checkout requires a short-lived token from Catat Saja
   (`?token=` / `account_token`) and `CATATSAJA_DELIVER_URL`,
   `DAHLUNAS_DELIVERY_SECRET`, `PLUS_CHECKOUT_SECRET`.
+- `soon` (optional): lists the project as coming soon, without prices or checkout;
+  signing keys and account delivery settings aren't required until it is removed.
+  Production uses it in [`catalog-production.json`](../config/catalog-production.json)
+  (`SHOP_CATALOG_FILE=/config/catalog-production.json`, `SHOP_KEY_ID` unset).
 - `email`: `subject`, `thank_you`, and `instructions`, each with nonempty `id`
   (Indonesian) and `en` (English) text. Instructions appear on the paid page too.
 - `products`: a nonempty array, each containing `slug`, `id`, `price`, `name`,

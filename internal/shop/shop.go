@@ -34,7 +34,9 @@ type Product struct {
 	// Months is set for account (prepaid Plus) products.
 	Months int
 	// Account means delivery writes Plus on Catat Saja, not an unlock code.
-	Account                      bool
+	Account bool
+	// Soon products are listed but can't be bought.
+	Soon                         bool
 	Delivery                     EmailCopy
 	Gateway, Currency, VariantID string
 	// ProjectSlug, ProjectName, Tagline, Icon and the images only present the
@@ -172,7 +174,9 @@ type Group struct {
 	// offers them as a choice of amount.
 	Amounts bool
 	// Account is set when the project delivers Plus to a Catat Saja account.
-	Account  bool
+	Account bool
+	// Soon is set when the project is listed but not sold yet.
+	Soon     bool
 	Products []Product
 }
 
@@ -200,7 +204,7 @@ func Groups(products []Product) []Group {
 			if slug == "" {
 				slug = strconv.Itoa(int(p.Project))
 			}
-			groups = append(groups, Group{Slug: slug, Name: p.ProjectName, Tagline: p.Tagline, Icon: p.Icon, Image: p.ProjectImage, About: p.About, Website: p.Website, Description: Text{p.DescriptionID, p.DescriptionEN}, Amounts: true, Account: p.Account})
+			groups = append(groups, Group{Slug: slug, Name: p.ProjectName, Tagline: p.Tagline, Icon: p.Icon, Image: p.ProjectImage, About: p.About, Website: p.Website, Description: Text{p.DescriptionID, p.DescriptionEN}, Amounts: true, Account: p.Account, Soon: p.Soon})
 		}
 		g := &groups[i]
 		if g.Account != p.Account {
@@ -265,7 +269,7 @@ func randomHex(n int) (string, error) {
 func (s *Service) Create(ctx context.Context, slug, email, accountToken string) (Order, error) {
 	var product Product
 	for _, p := range s.Products {
-		if p.Slug == slug {
+		if p.Slug == slug && !p.Soon {
 			product = p
 			break
 		}

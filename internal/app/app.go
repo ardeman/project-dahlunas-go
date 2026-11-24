@@ -84,6 +84,9 @@ func Handler() (http.Handler, error) {
 	required := []string{"SHOP_BASE_URL", "SHOP_REFUND_ID", "SHOP_REFUND_EN", "GOOGLE_CLOUD_PROJECT", "RESEND_API_KEY", "RESEND_FROM"}
 	needed := map[string]bool{}
 	for _, p := range products {
+		if p.Soon {
+			continue
+		}
 		needed[p.GatewayName()] = true
 	}
 	if needed[payment.Midtrans] {
@@ -110,6 +113,9 @@ func Handler() (http.Handler, error) {
 	}
 	needsAccount := false
 	for _, p := range products {
+		if p.Soon {
+			continue
+		}
 		if p.Account {
 			needsAccount = true
 			continue

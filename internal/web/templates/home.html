@@ -19,7 +19,7 @@
     {{range .Groups}}{{$p := index .Products 0}}
       <li><a class="card" href="{{$.Href (print "/projects/" .Slug)}}">
         {{if .Image.ID}}<img class="shot" src="/static/products/{{$.T .Image.ID .Image.EN}}" alt="" loading="lazy">{{end}}
-        <span class="card-row">{{if .Icon}}<img class="icon" src="/static/products/{{.Icon}}" alt="" width="56" height="56">{{end}}<span class="card-text"><strong>{{if .Name.ID}}{{$.T .Name.ID .Name.EN}}{{else}}{{$.T $p.NameID $p.NameEN}}{{end}}</strong>{{if .Tagline.ID}}<span class="tagline">{{$.T .Tagline.ID .Tagline.EN}}</span>{{end}}<span class="from">{{if gt (len .Products) 1}}{{$.T "Mulai" "From"}} {{end}}{{.From.FormattedPrice}}</span></span><span class="go" aria-hidden="true">→</span></span>
+        <span class="card-row">{{if .Icon}}<img class="icon" src="/static/products/{{.Icon}}" alt="" width="56" height="56">{{end}}<span class="card-text"><strong>{{if .Name.ID}}{{$.T .Name.ID .Name.EN}}{{else}}{{$.T $p.NameID $p.NameEN}}{{end}}</strong>{{if .Tagline.ID}}<span class="tagline">{{$.T .Tagline.ID .Tagline.EN}}</span>{{end}}<span class="from">{{if .Soon}}{{$.T "Segera hadir" "Coming soon"}}{{else}}{{if gt (len .Products) 1}}{{$.T "Mulai" "From"}} {{end}}{{.From.FormattedPrice}}{{end}}</span></span><span class="go" aria-hidden="true">→</span></span>
       </a></li>
     {{end}}
     </ul>

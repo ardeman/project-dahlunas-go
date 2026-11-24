@@ -103,6 +103,9 @@ func (p page) Months(n int) string {
 // describe what can be bought here: "account", "activation" or a gateway name.
 func (p page) Sells(kind string) bool {
 	for _, group := range p.groups() {
+		if group.Soon {
+			continue
+		}
 		for _, product := range group.Products {
 			if kind == "account" && product.Account || kind == "activation" && product.Activation || kind == product.GatewayName() {
 				return true

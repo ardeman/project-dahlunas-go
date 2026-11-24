@@ -21,7 +21,7 @@
   </dl>
   {{if .Groups}}<h2>{{.T "Produk" "Products"}}</h2>
   <ul class="profile-products">
-    {{range .Groups}}<li><a href="{{$.Href (print "/projects/" .Slug)}}">{{if .Name.ID}}{{$.T .Name.ID .Name.EN}}{{else}}{{with index .Products 0}}{{$.T .NameID .NameEN}}{{end}}{{end}}</a>{{if .Tagline.ID}}: {{$.T .Tagline.ID .Tagline.EN}}{{end}}. {{$.T "Mulai" "From"}} {{.From.FormattedPrice}}.</li>{{end}}
+    {{range .Groups}}<li><a href="{{$.Href (print "/projects/" .Slug)}}">{{if .Name.ID}}{{$.T .Name.ID .Name.EN}}{{else}}{{with index .Products 0}}{{$.T .NameID .NameEN}}{{end}}{{end}}</a>{{if .Tagline.ID}}: {{$.T .Tagline.ID .Tagline.EN}}{{end}}. {{if .Soon}}{{$.T "Segera hadir" "Coming soon"}}{{else}}{{$.T "Mulai" "From"}} {{.From.FormattedPrice}}{{end}}.</li>{{end}}
   </ul>{{end}}
   <h2>{{.T "Cara membeli" "How buying works"}}</h2>
   <ol>

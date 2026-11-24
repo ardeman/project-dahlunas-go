@@ -21,6 +21,7 @@
     {{range $g.About}}<p>{{$.T .ID .EN}}</p>{{end}}
     {{if $g.Website}}<p><a href="{{$g.Website}}">{{.T "Situs" "Website"}} {{if $g.Name.ID}}{{.T $g.Name.ID $g.Name.EN}}{{else}}{{.T $p.NameID $p.NameEN}}{{end}} →</a></p>{{end}}
   </div>
+  {{if $g.Soon}}<p class="closed">{{.T "Segera hadir. Belum bisa dibeli." "Coming soon. Not on sale yet."}}</p>{{else}}
   <section aria-labelledby="product-title">
     <h2 id="product-title">{{if and $g.Account $g.Amounts}}{{.T "Pilih lama aktif" "Choose a duration"}}{{else if $g.Amounts}}{{.T "Pilih jumlah" "Choose an amount"}}{{else}}{{.T "Pilih produk" "Choose a product"}}{{end}}</h2>
     {{$needAccount := and $g.Account (not .AccountToken)}}
@@ -60,6 +61,7 @@
       <p class="muted">{{if $g.Account}}{{.T "Plus aktif di akun Anda setelah pembayaran dikonfirmasi; konfirmasi juga dikirim ke email." "Plus turns on in your account once payment is confirmed; a confirmation is emailed too."}}{{else}}{{.T "Kode muncul di halaman pesanan setelah pembayaran dikonfirmasi, lalu dikirim ke email Anda." "Your code appears on the order page once payment is confirmed, and is emailed to you."}}{{end}}</p>{{end}}
     </form>
   </section>
+  {{end}}
   </main>
   {{template "footer" .}}
 </body>
