@@ -53,6 +53,11 @@ func TestResubmittedFormOpensSameOrder(t *testing.T) {
 	if b := w.Body.String(); !strings.Contains(b, `data-project="coba-lagi"`) || !strings.Contains(b, `data-state="pending"`) || !strings.Contains(b, "/static/recent.js") {
 		t.Fatal(b)
 	}
+	for _, o := range store.orders {
+		if o.Lang != "id" {
+			t.Fatal("order must record the shop language", o.Lang)
+		}
+	}
 	if strings.Contains(w.Body.String(), "/change") {
 		t.Fatal("nothing to change before a method is chosen")
 	}
@@ -77,5 +82,20 @@ func TestResubmittedFormOpensSameOrder(t *testing.T) {
 	h.ServeHTTP(w, httptest.NewRequest("POST", path[:len(path)-1]+"x/change", nil))
 	if w.Code != 404 {
 		t.Fatal(w.Code)
+	}
+	c = form()
+	v := url.Values{"csrf": {c.Value}, "accept": {"yes"}, "email": {"buyer@example.com"}, "product": {"coba-lagi-1"}, "cf-turnstile-response": {"challenge"}}
+	r := httptest.NewRequest("POST", "/checkout?lang=en", strings.NewReader(v.Encode()))
+	r.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	r.AddCookie(c)
+	h.ServeHTTP(httptest.NewRecorder(), r)
+	english := 0
+	for _, o := range store.orders {
+		if o.Lang == "en" {
+			english++
+		}
+	}
+	if english != 1 {
+		t.Fatal("English checkout not recorded", english)
 	}
 }

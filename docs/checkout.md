@@ -41,8 +41,8 @@ through the [project catalog](projects.md); the setup below describes the defaul
    key list was empty when this checkout was implemented, so it needs provisioning
    before codes can unlock the app. Do not ship sandbox public keys in releases.
 6. Set up a verified sender domain in Resend. Set `RESEND_API_KEY`, `RESEND_FROM`
-   (quote display names containing spaces), and `SHOP_SUPPORT_EMAIL`. Emails are
-   bilingual and contain the code and order ID. Resend's test sender only works
+   (quote display names containing spaces), and `SHOP_SUPPORT_EMAIL`. Emails use
+   the buyer's shop language and contain the code and order ID. Resend's test sender only works
    with permitted test recipients; a verified domain is needed for buyers.
 7. Set `SHOP_BASE_URL` to your local origin (`http://localhost:8080`) or a public
    HTTPS sandbox origin. Set your actual refund terms in `SHOP_REFUND_ID` and

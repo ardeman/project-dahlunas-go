@@ -62,3 +62,35 @@ func TestEmailProviderFailureIsNotSuccess(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestEmailUsesOrderLanguage(t *testing.T) {
+	var subject, text string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct{ Subject, Text string }
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Error(err)
+		}
+		subject, text = body.Subject, body.Text
+		w.Write([]byte(`{"id":"email-1"}`))
+	}))
+	defer server.Close()
+	m := New("test-key", "shop@example.com", "support@example.com")
+	m.endpoint = server.URL
+	copy := shop.EmailCopy{Subject: shop.Text{ID: "Kode", EN: "Code"}, ThankYou: shop.Text{ID: "Terima kasih", EN: "Thank you"}, Instructions: shop.Text{ID: "Buka", EN: "Open"}}
+	for _, tc := range []struct {
+		lang          string
+		account       bool
+		subject, text string
+	}{
+		{"id", false, "Kode", "Terima kasih\n\nDL1.x\n\nBuka\n\nPesanan: o1\nBantuan: support@example.com"},
+		{"en", false, "Code", "Thank you\n\nDL1.x\n\nOpen\n\nOrder: o1\nSupport: support@example.com"},
+		{"en", true, "Code", "Thank you\n\nOpen\n\nOrder: o1\nSupport: support@example.com"},
+		{"", false, "Kode / Code", "Terima kasih / Thank you\n\nDL1.x\n\nBuka\nOpen\n\nPesanan / Order: o1\nBantuan / Support: support@example.com"},
+	} {
+		o := shop.Order{ID: "o1", Email: "buyer@example.com", Code: "DL1.x", Lang: tc.lang}
+		o.Product.Delivery, o.Product.Account = copy, tc.account
+		if err := m.Send(context.Background(), o); err != nil || subject != tc.subject || text != tc.text {
+			t.Fatalf("%s: %v %q %q", tc.lang, err, subject, text)
+		}
+	}
+}

@@ -13,7 +13,7 @@ func TestCreateOnceReusesSubmittedOrder(t *testing.T) {
 	s, g, _, _ := setup(t)
 	once := func(key, slug, email string) Order {
 		t.Helper()
-		o, err := s.CreateOnce(ctx, key, slug, email, "")
+		o, err := s.CreateOnce(ctx, key, slug, email, "", "en")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -52,7 +52,7 @@ func TestCreateOnceReusesSubmittedOrder(t *testing.T) {
 	if next.ID == ended.ID || once("c", "coba-lagi-1", "buyer@example.com").ID != next.ID {
 		t.Fatal("ended order not replaced by one new order")
 	}
-	if _, err := s.CreateOnce(ctx, "", "coba-lagi-1", "buyer@example.com", ""); !errors.Is(err, ErrInput) {
+	if _, err := s.CreateOnce(ctx, "", "coba-lagi-1", "buyer@example.com", "", "en"); !errors.Is(err, ErrInput) {
 		t.Fatal(err)
 	}
 }
@@ -65,7 +65,7 @@ func TestCreateOnceConcurrentSubmissions(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			o, err := s.CreateOnce(context.Background(), "race", "coba-lagi-1", "buyer@example.com", "")
+			o, err := s.CreateOnce(context.Background(), "race", "coba-lagi-1", "buyer@example.com", "", "en")
 			if err != nil {
 				t.Error(err)
 			}
@@ -87,12 +87,12 @@ func TestCreateOnceWithoutPaymentSession(t *testing.T) {
 	if err := s.Store.Create(ctx, Order{ID: id, State: "pending", Created: s.now()}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.CreateOnce(ctx, "k", "coba-lagi-1", "buyer@example.com", ""); !errors.Is(err, ErrRetry) {
+	if _, err := s.CreateOnce(ctx, "k", "coba-lagi-1", "buyer@example.com", "", "en"); !errors.Is(err, ErrRetry) {
 		t.Fatal(err)
 	}
 	later := s.now().Add(sessionWait + time.Second)
 	s.Now = func() time.Time { return later }
-	o, err := s.CreateOnce(ctx, "k", "coba-lagi-1", "buyer@example.com", "")
+	o, err := s.CreateOnce(ctx, "k", "coba-lagi-1", "buyer@example.com", "", "en")
 	if err != nil || o.ID == id {
 		t.Fatal(o.ID, err)
 	}

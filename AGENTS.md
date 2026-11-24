@@ -32,6 +32,8 @@ A change is done only when the **Checks** command in `README.md` passes. If you 
 
 Record architectural choices here as one line each: date, decision, reason.
 
+- 2026-11-24: Purchase emails use one language, the shop language at checkout, stored on the order so a retry sends the same body; older orders without it stay bilingual.
+
 - 2026-11-24: The order stores the payment type Midtrans reports, since Snap reports no method choice to the page, which then offers "Change payment method", which cancels at Midtrans, confirms the authoritative status, and only then opens a replacement order (Midtrans never accepts a used order ID again). A payment that wins the race is kept. Cards are excluded, because cancelling could void a charge being captured. Snap reports no height either, so payment covers the screen instead of sitting in a frame that either leaves a gap or scrolls inside the page.
 
 - 2026-11-24: A submitted checkout form makes at most one usable order: its order ID is a hash of the form's CSRF value and inputs, checked before Turnstile since its tokens work once. A recent order is offered again from the browser's own storage (24 hours), never looked up by email, which would reveal other people's purchases. Buying again stays possible: Plus months add up and codes can be bought for others.
@@ -52,7 +54,7 @@ Record architectural choices here as one line each: date, decision, reason.
 
 - 2026-10-26: The sandbox gets its own Hosting site, `dah-lunas-sandbox.web.app`, rewriting to `dahlunas-development` in the same Firebase project; a memorable address, and sandbox tests now pass through Hosting like production. The checkout CSRF cookie is named `__session`, the only cookie Hosting forwards. Separate Firebase projects per environment can wait until others get dev access.
 
-- 2026-10-26: Pages show one language at a time, chosen by `?lang=` carried on internal links, else `Accept-Language`, else Indonesian; Firebase Hosting forwards no cookie but `__session` to Cloud Run, so a language cookie would never arrive. Emails stay bilingual.
+- 2026-10-26: Pages show one language at a time, chosen by `?lang=` carried on internal links, else `Accept-Language`, else Indonesian; Firebase Hosting forwards no cookie but `__session` to Cloud Run, so a language cookie would never arrive.
 
 - 2026-10-26: GitHub Actions deploys both Cloud Run services after the checks pass on `main`, development automatically and production after the owner's approval in a GitHub environment, signing in through Workload Identity Federation as a narrow deployer account; a manual deploy was forgotten once, and no long-lived Google key may sit in GitHub. Pushes that change only docs, Hosting or CI files skip both deploys. The approval is its own job, which a newer push cancels while it waits, so only the latest build is offered; the deploy job after it never cancels. Firebase Hosting stays a manual deploy, since its rewrite rarely changes.
 

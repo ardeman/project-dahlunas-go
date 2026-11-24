@@ -59,6 +59,9 @@ type Order struct {
 	Product                Product
 	Created                time.Time
 	SnapToken, Code, State string
+	// Lang is the shop language the buyer used, "id" or "en"; orders made before
+	// it was recorded leave it empty and get a bilingual email.
+	Lang string
 	// Method is the payment type chosen at the gateway.
 	Method    string
 	Paid      bool
@@ -330,12 +333,12 @@ func (s *Service) Submitted(ctx context.Context, key, slug, email, accountToken 
 }
 
 // CreateOnce creates at most one usable order for a submitted form.
-func (s *Service) CreateOnce(ctx context.Context, key, slug, email, accountToken string) (Order, error) {
+func (s *Service) CreateOnce(ctx context.Context, key, slug, email, accountToken, lang string) (Order, error) {
 	if key == "" {
 		return Order{}, ErrInput
 	}
 	return s.once(ctx, key, slug, email, accountToken, func(id string) (Order, error) {
-		return s.create(ctx, id, slug, email, accountToken)
+		return s.create(ctx, id, slug, email, accountToken, lang)
 	})
 }
 
@@ -364,10 +367,10 @@ func (s *Service) Create(ctx context.Context, slug, email, accountToken string) 
 	if err != nil {
 		return Order{}, err
 	}
-	return s.create(ctx, id, slug, email, accountToken)
+	return s.create(ctx, id, slug, email, accountToken, "")
 }
 
-func (s *Service) create(ctx context.Context, id, slug, email, accountToken string) (Order, error) {
+func (s *Service) create(ctx context.Context, id, slug, email, accountToken, lang string) (Order, error) {
 	var product Product
 	for _, p := range s.Products {
 		if p.Slug == slug && !p.Soon {
@@ -400,11 +403,11 @@ func (s *Service) create(ctx context.Context, id, slug, email, accountToken stri
 			return Order{}, errors.New("shop: signing unavailable")
 		}
 	}
-	return s.open(ctx, id, product, email, accountUID)
+	return s.open(ctx, id, product, email, accountUID, lang)
 }
 
 // open stores a validated order and starts its payment session.
-func (s *Service) open(ctx context.Context, id string, product Product, email, accountUID string) (Order, error) {
+func (s *Service) open(ctx context.Context, id string, product Product, email, accountUID, lang string) (Order, error) {
 	gateway := s.gateway(product.GatewayName())
 	token, err := randomHex(32)
 	if err != nil {
@@ -417,7 +420,7 @@ func (s *Service) open(ctx context.Context, id string, product Product, email, a
 			return Order{}, err
 		}
 	}
-	o := Order{PaymentProof: proof, ID: id, ViewToken: token, Email: email, AccountUID: accountUID, Product: product, Created: s.now(), State: "pending"}
+	o := Order{PaymentProof: proof, ID: id, ViewToken: token, Email: email, Lang: lang, AccountUID: accountUID, Product: product, Created: s.now(), State: "pending"}
 	if err := s.Store.Create(ctx, o); errors.Is(err, ErrConflict) {
 		return Order{}, errTaken
 	} else if err != nil {
@@ -458,7 +461,7 @@ func (o Order) CanChangePayment() bool {
 // ChangePayment cancels a pending payment and opens a new order for the same
 // purchase. It returns the order itself when that turns out to be paid. Only
 // one usable replacement exists per order, however often this is called.
-func (s *Service) ChangePayment(ctx context.Context, id, token string) (Order, error) {
+func (s *Service) ChangePayment(ctx context.Context, id, token, lang string) (Order, error) {
 	o, err := s.View(ctx, id, token)
 	if err != nil || o.Paid {
 		return o, err
@@ -510,7 +513,7 @@ func (s *Service) ChangePayment(ctx context.Context, id, token string) (Order, e
 		return Order{}, errors.New("shop: signing unavailable")
 	}
 	return s.once(ctx, o.ViewToken, "change", o.ID, "", func(next string) (Order, error) {
-		return s.open(ctx, next, product, o.Email, o.AccountUID)
+		return s.open(ctx, next, product, o.Email, o.AccountUID, lang)
 	})
 }
 

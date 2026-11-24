@@ -1,4 +1,4 @@
-// Package delivery sends bilingual unlock-code emails through Resend.
+// Package delivery sends purchase emails in the buyer's language through Resend.
 package delivery
 
 import (
@@ -24,16 +24,26 @@ func New(key, from, support string) *Resend {
 
 func (r *Resend) Send(ctx context.Context, o shop.Order) error {
 	copy := o.Product.DeliveryCopy()
-	text := copy.ThankYou.ID + " / " + copy.ThankYou.EN + "\n\n"
-	if o.Product.Account {
-		text += copy.Instructions.ID + "\n" + copy.Instructions.EN + "\n\n"
-	} else {
-		text += o.Code + "\n\n" + copy.Instructions.ID + "\n" + copy.Instructions.EN + "\n\n"
+	// A retry must send the same body, so the language is fixed on the order.
+	pick := func(t shop.Text, separator string) string {
+		switch o.Lang {
+		case "id":
+			return t.ID
+		case "en":
+			return t.EN
+		}
+		return t.ID + separator + t.EN
 	}
-	text += "Pesanan / Order: " + o.ID + "\nBantuan / Support: " + r.support
+	text := pick(copy.ThankYou, " / ") + "\n\n"
+	if !o.Product.Account {
+		text += o.Code + "\n\n"
+	}
+	text += pick(copy.Instructions, "\n") + "\n\n" +
+		pick(shop.Text{ID: "Pesanan", EN: "Order"}, " / ") + ": " + o.ID + "\n" +
+		pick(shop.Text{ID: "Bantuan", EN: "Support"}, " / ") + ": " + r.support
 	body := map[string]any{
 		"from": r.from, "to": []string{o.Email}, "reply_to": r.support,
-		"subject": copy.Subject.ID + " / " + copy.Subject.EN,
+		"subject": pick(copy.Subject, " / "),
 		"text":    text,
 	}
 	b, err := json.Marshal(body)

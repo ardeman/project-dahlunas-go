@@ -77,7 +77,7 @@ func TestChangePaymentReplacesCancelledOrderOnce(t *testing.T) {
 	if !o.CanChangePayment() {
 		t.Fatal("button missing")
 	}
-	if _, err := s.ChangePayment(ctx, o.ID, "wrong"); !errors.Is(err, ErrNotFound) {
+	if _, err := s.ChangePayment(ctx, o.ID, "wrong", "en"); !errors.Is(err, ErrNotFound) {
 		t.Fatal(err)
 	}
 	g.after = payment.Status{State: "cancel"}
@@ -87,7 +87,7 @@ func TestChangePaymentReplacesCancelledOrderOnce(t *testing.T) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			next, err := s.ChangePayment(ctx, o.ID, o.ViewToken)
+			next, err := s.ChangePayment(ctx, o.ID, o.ViewToken, "en")
 			if err != nil {
 				t.Error(err)
 			}
@@ -104,7 +104,7 @@ func TestChangePaymentReplacesCancelledOrderOnce(t *testing.T) {
 		t.Fatal(g.creates)
 	}
 	next, _ := s.Store.Get(ctx, ids[0])
-	if next.Email != o.Email || next.Product.Slug != o.Product.Slug || next.Method != "" || next.SnapToken == "" {
+	if next.Email != o.Email || next.Product.Slug != o.Product.Slug || next.Lang != "en" || next.Method != "" || next.SnapToken == "" {
 		t.Fatalf("%+v", next)
 	}
 	// A delayed pending status must not reopen the cancelled payment.
@@ -136,7 +136,7 @@ func TestChangePaymentNeverReplacesLivePayment(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			s, g, o := pendingOrder(t, tc.method)
 			tc.before(g, o.ID)
-			got, err := s.ChangePayment(ctx, o.ID, o.ViewToken)
+			got, err := s.ChangePayment(ctx, o.ID, o.ViewToken, "en")
 			if tc.paid != (err == nil) || got.Paid != tc.paid || g.creates != 1 {
 				t.Fatal(got.Paid, err, g.creates)
 			}
@@ -161,7 +161,7 @@ func TestChangePaymentKeepsAccount(t *testing.T) {
 	s.Products[0].Months = 1
 	s.Accounts = &account.Deliverer{}
 	g.after = payment.Status{State: "cancel"}
-	next, err := s.ChangePayment(ctx, o.ID, o.ViewToken)
+	next, err := s.ChangePayment(ctx, o.ID, o.ViewToken, "en")
 	if err != nil || next.AccountUID != "uid-1" || next.ID == o.ID {
 		t.Fatal(next.AccountUID, err)
 	}

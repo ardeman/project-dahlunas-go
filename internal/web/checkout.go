@@ -103,7 +103,7 @@ func registerShop(mux *http.ServeMux, config Options) {
 				return
 			}
 		}
-		o, err := s.CreateOnce(r.Context(), cookie.Value, product, email, accountToken)
+		o, err := s.CreateOnce(r.Context(), cookie.Value, product, email, accountToken, p.Lang)
 		if errors.Is(err, shop.ErrInput) {
 			fail(w, p, "Produk atau email tidak valid. Buka Plus dari Catat Saja jika itu yang dibeli.", "Invalid product or email. Open Plus from Catat Saja for that purchase.", 400)
 			return
@@ -125,7 +125,7 @@ func registerShop(mux *http.ServeMux, config Options) {
 			fail(w, p, "Terlalu banyak permintaan. Coba lagi nanti.", "Too many requests. Try again shortly.", http.StatusTooManyRequests)
 			return
 		}
-		o, err := s.ChangePayment(r.Context(), r.PathValue("id"), r.PathValue("token"))
+		o, err := s.ChangePayment(r.Context(), r.PathValue("id"), r.PathValue("token"), p.Lang)
 		if errors.Is(err, shop.ErrNotFound) {
 			fail(w, p, "Halaman tidak ditemukan.", "Page not found.", http.StatusNotFound)
 			return
