@@ -34,18 +34,21 @@
     }
     box.dataset.snapReady = '1';
     const en = language() === 'en';
+    // Snap's own X removes its frame, so offer a way back to it. It reports a
+    // close before a method is chosen, and a pending payment after.
+    function closed() {
+      const resume = document.getElementById('snap-resume');
+      delete box.dataset.snapReady;
+      if (!resume) return;
+      box.hidden = true;
+      resume.hidden = false;
+      resume.focus();
+    }
     window.snap.embed(box.dataset.snapToken, {
       embedId: 'snap-container',
       language: en ? 'en' : 'id',
-      // Snap's own X removes its frame, so offer a way back to it.
-      onClose: function () {
-        const resume = document.getElementById('snap-resume');
-        delete box.dataset.snapReady;
-        if (!resume) return;
-        box.hidden = true;
-        resume.hidden = false;
-        resume.focus();
-      },
+      onClose: closed,
+      onPending: closed,
       onSuccess: function () { window.location.reload(); },
       onError: function () {
         const current = document.getElementById('payment-error');
