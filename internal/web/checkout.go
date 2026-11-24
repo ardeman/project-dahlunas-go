@@ -155,8 +155,10 @@ func registerShop(mux *http.ServeMux, config Options) {
 		}
 		render(w, p, "order.html", struct {
 			page
-			Order shop.Order
-		}{p, o})
+			Order         shop.Order
+			Website, Poll string
+			Slow          bool
+		}{p, o, website(config, o), deliveryPoll(o, time.Now()), deliverySlow(o, time.Now())})
 	})
 	for _, gateway := range []string{payment.Midtrans, payment.LemonSqueezy} {
 		if !s.HasGateway(gateway) {
@@ -225,4 +227,35 @@ func checkoutForm(w http.ResponseWriter, r *http.Request, config Options, g shop
 		AccountToken string
 		AccountEmail string
 	}{p, token, g, len(config.groups()) > 1, accountToken, accountEmail})
+}
+
+// website is the project's home page; stored orders don't carry it.
+func website(config Options, o shop.Order) string {
+	slug := o.GroupSlug()
+	for _, g := range config.groups() {
+		if g.Slug == slug {
+			return g.Website
+		}
+	}
+	return ""
+}
+
+// deliveryPoll is how often the page of a paid order checks its delivery, empty
+// when there is nothing left to wait for. Delivery starts as payment settles.
+func deliveryPoll(o shop.Order, now time.Time) string {
+	if !o.DeliveryPending() {
+		return ""
+	}
+	if !deliverySlow(o, now) {
+		return "5s"
+	}
+	if now.Sub(o.EmailFirstAttempt) < time.Hour {
+		return "30s"
+	}
+	return ""
+}
+
+// deliverySlow reports a delivery still unfinished long after it should be.
+func deliverySlow(o shop.Order, now time.Time) bool {
+	return o.DeliveryPending() && !o.EmailFirstAttempt.IsZero() && now.Sub(o.EmailFirstAttempt) >= 2*time.Minute
 }

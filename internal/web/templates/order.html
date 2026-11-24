@@ -10,16 +10,24 @@
 {{if .Order.Paid}}
 <p class="stamp" aria-hidden="true">Lunas</p>
 <h1>{{.T "Terima kasih!" "Thank you!"}}</h1>
-<p>{{if .EN}}Your payment of {{.Order.Product.FormattedPrice}} is confirmed.{{else}}Pembayaran {{.Order.Product.FormattedPrice}} telah dikonfirmasi.{{end}}</p>
-{{if .Order.Product.Account}}
-<p class="policy-text">{{.T .Order.Product.DeliveryCopy.Instructions.ID .Order.Product.DeliveryCopy.Instructions.EN}}</p>
-{{if and .Order.AccountDone .Order.EmailSent}}<p>{{.T "Plus sudah aktif di akun Anda. Konfirmasi telah dikirim melalui email." "Plus is on your account. A confirmation has been emailed."}}</p>{{else}}<p>{{.T "Plus sedang diaktifkan; halaman ini dan email akan menyusul jika belum." "Plus is being activated; this page and email will catch up if they have not yet."}}</p>{{end}}
-{{else}}
+<p>{{if .EN}}Your payment of <span class="nowrap">{{.Order.Product.FormattedPrice}}</span> is confirmed.{{else}}Pembayaran <span class="nowrap">{{.Order.Product.FormattedPrice}}</span> telah dikonfirmasi.{{end}}</p>
+{{if not .Order.Product.Account}}
 <label for="code">{{.T "Kode" "Code"}}</label><textarea id="code" readonly rows="5" spellcheck="false">{{.Order.Code}}</textarea>
 <p>{{.T "Salin seluruh kode." "Copy the entire code."}}</p>
 <p class="policy-text">{{.T .Order.Product.DeliveryCopy.Instructions.ID .Order.Product.DeliveryCopy.Instructions.EN}}</p>
-{{if .Order.EmailSent}}<p>{{.T "Kode telah dikirim melalui email." "The code has been sent by email."}}</p>{{else}}<p>{{.T "Kode Anda siap di atas. Email masih menunggu pengiriman; hubungi kami jika belum diterima." "Your code is ready above. Email delivery is pending; contact us if it does not arrive."}}</p>{{end}}
 {{end}}
+<div id="delivery" {{if .Poll}}hx-get="{{.Href .Order.Path}}" hx-trigger="every {{.Poll}}" hx-select="#delivery" hx-swap="outerHTML"{{end}}>
+{{if .Order.Product.Account}}
+{{if .Order.AccountDone}}<p><strong>{{.T "Plus aktif." "Plus is on."}}</strong> {{.Months .Order.Product.Months}} {{.T "ditambahkan ke akun Anda." "added to your account."}}</p>
+<p class="policy-text">{{.T .Order.Product.DeliveryCopy.Instructions.ID .Order.Product.DeliveryCopy.Instructions.EN}}</p>
+{{if .Website}}<p><a href="{{.Website}}" rel="noreferrer">{{.T "Buka Catat Saja" "Open Catat Saja"}}</a></p>{{end}}
+{{if .Order.EmailSent}}<p>{{.T "Konfirmasi telah dikirim ke email Anda." "A confirmation has been sent to your email."}}</p>{{else if .Slow}}<p>{{.T "Email konfirmasi belum terkirim, tetapi Plus Anda sudah aktif. Anda bisa menutup halaman ini." "The confirmation email hasn't been sent yet, but your Plus is on. You can close this page."}}</p>{{else}}<p>{{.T "Email konfirmasi sedang dikirim." "The confirmation email is on its way."}}</p>{{end}}
+{{else if .Slow}}<p>{{.T "Mengaktifkan Plus lebih lama dari biasanya. Pembayaran Anda sudah kami terima dan kami akan terus mencoba. Jika belum aktif dalam satu jam, hubungi kami di" "Turning on Plus is taking longer than usual. We have your payment and will keep trying. If it isn't on within an hour, contact us at"}} <a href="mailto:{{.Support}}">{{.Support}}</a> {{.T "dan sertakan nomor pesanan di bawah." "with the order number below."}}</p>
+{{else}}<p>{{.T "Plus sedang diaktifkan, biasanya dalam satu menit. Anda bisa menutup halaman ini." "Turning on Plus, usually within a minute. You can close this page."}}</p>{{end}}
+{{else if .Order.EmailSent}}<p>{{.T "Kode telah dikirim melalui email." "The code has been sent by email."}}</p>
+{{else if .Slow}}<p>{{.T "Kode Anda siap di atas, tetapi emailnya belum terkirim. Simpan kodenya, atau hubungi kami di" "Your code is ready above, but its email hasn't been sent. Keep a copy, or contact us at"}} <a href="mailto:{{.Support}}">{{.Support}}</a>.</p>
+{{else}}<p>{{.T "Kode Anda siap di atas. Email sedang dikirim." "Your code is ready above. The email is on its way."}}</p>{{end}}
+</div>
 {{else}}
 <h1>{{.T "Selesaikan pembayaran" "Complete payment"}}</h1>
 <p>{{if .Order.Product.Months}}{{.T .Order.Product.NameID .Order.Product.NameEN}} · {{.Months .Order.Product.Months}} · {{end}}{{.Order.Product.FormattedPrice}}</p>
@@ -32,7 +40,7 @@
 <p id="payment-error" role="status"></p>
 {{end}}
 <p class="muted">{{.T "Pesanan" "Order"}}: {{.Order.ID}}</p>
-<p>{{if .Order.Product.Account}}{{.T "Simpan tautan ini secara pribadi untuk melihat status pesanan." "Keep this link private to check your order status."}}{{else}}{{.T "Simpan tautan ini secara pribadi untuk melihat kode Anda." "Keep this link private to retrieve your code."}}{{end}}</p>
+<p>{{if .Order.Product.Account}}{{.T "Jaga kerahasiaan tautan ini; siapa pun yang memilikinya bisa melihat pesanan ini." "Keep this link private; anyone with it can see this order."}}{{else}}{{.T "Simpan tautan ini secara pribadi untuk melihat kode Anda." "Keep this link private to retrieve your code."}}{{end}}</p>
 </div>
 {{if and (not .Order.Paid) (eq .Order.Product.GatewayName "midtrans") .Order.SnapToken}}{{if or (eq .Order.State "pending") (eq .Order.State "capture")}}<button type="button" id="snap-resume">{{.T "Lanjutkan pembayaran" "Continue payment"}}</button>{{end}}{{end}}
 </main>{{template "footer" .}}
