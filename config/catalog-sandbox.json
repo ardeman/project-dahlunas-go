@@ -133,8 +133,8 @@
           "en": "Bedug infaq"
         },
         "description": {
-          "id": "Infaq untuk pengembangan Bedug, dengan kode untuk versi Windows dan Linux (Microsoft Store, Flathub). Bedug tetap gratis; semua pilihan sama, kode menandai infaq Anda di aplikasi dan mematikan iklan bila versi itu menampilkannya. Kode tidak berlaku di versi App Store atau Google Play. Kode aktif di satu perangkat (perlu internet saat dimasukkan) dan bisa dipindah ke perangkat lain hingga 3 kali.",
-          "en": "Infaq supporting Bedug's development, with a code for Windows and Linux builds (Microsoft Store, Flathub). Bedug stays free; every option is the same: the code marks your infaq in the app and turns ads off where that build shows them. Codes do not apply to App Store or Google Play builds. A code is active on one device (entering it needs internet) and can move to another device up to 3 times."
+          "id": "Infaq untuk pengembangan Bedug, dengan kode untuk versi Windows dan Linux dari rilis GitHub. Bedug tetap gratis; semua pilihan sama, kode menandai infaq Anda di aplikasi dan mematikan iklan bila versi itu menampilkannya. Kode tidak berlaku di versi App Store atau Google Play. Kode aktif di satu perangkat (perlu internet saat dimasukkan) dan bisa dipindah ke perangkat lain hingga 3 kali.",
+          "en": "Infaq supporting Bedug's development, with a code for the Windows and Linux builds on GitHub releases. Bedug stays free; every option is the same: the code marks your infaq in the app and turns ads off where that build shows them. Codes do not apply to App Store or Google Play builds. A code is active on one device (entering it needs internet) and can move to another device up to 3 times."
         }
       },
       {
@@ -146,8 +146,8 @@
           "en": "Bedug infaq"
         },
         "description": {
-          "id": "Infaq untuk pengembangan Bedug, dengan kode untuk versi Windows dan Linux (Microsoft Store, Flathub). Bedug tetap gratis; semua pilihan sama, kode menandai infaq Anda di aplikasi dan mematikan iklan bila versi itu menampilkannya. Kode tidak berlaku di versi App Store atau Google Play. Kode aktif di satu perangkat (perlu internet saat dimasukkan) dan bisa dipindah ke perangkat lain hingga 3 kali.",
-          "en": "Infaq supporting Bedug's development, with a code for Windows and Linux builds (Microsoft Store, Flathub). Bedug stays free; every option is the same: the code marks your infaq in the app and turns ads off where that build shows them. Codes do not apply to App Store or Google Play builds. A code is active on one device (entering it needs internet) and can move to another device up to 3 times."
+          "id": "Infaq untuk pengembangan Bedug, dengan kode untuk versi Windows dan Linux dari rilis GitHub. Bedug tetap gratis; semua pilihan sama, kode menandai infaq Anda di aplikasi dan mematikan iklan bila versi itu menampilkannya. Kode tidak berlaku di versi App Store atau Google Play. Kode aktif di satu perangkat (perlu internet saat dimasukkan) dan bisa dipindah ke perangkat lain hingga 3 kali.",
+          "en": "Infaq supporting Bedug's development, with a code for the Windows and Linux builds on GitHub releases. Bedug stays free; every option is the same: the code marks your infaq in the app and turns ads off where that build shows them. Codes do not apply to App Store or Google Play builds. A code is active on one device (entering it needs internet) and can move to another device up to 3 times."
         }
       },
       {
@@ -159,8 +159,8 @@
           "en": "Bedug infaq"
         },
         "description": {
-          "id": "Infaq untuk pengembangan Bedug, dengan kode untuk versi Windows dan Linux (Microsoft Store, Flathub). Bedug tetap gratis; semua pilihan sama, kode menandai infaq Anda di aplikasi dan mematikan iklan bila versi itu menampilkannya. Kode tidak berlaku di versi App Store atau Google Play. Kode aktif di satu perangkat (perlu internet saat dimasukkan) dan bisa dipindah ke perangkat lain hingga 3 kali.",
-          "en": "Infaq supporting Bedug's development, with a code for Windows and Linux builds (Microsoft Store, Flathub). Bedug stays free; every option is the same: the code marks your infaq in the app and turns ads off where that build shows them. Codes do not apply to App Store or Google Play builds. A code is active on one device (entering it needs internet) and can move to another device up to 3 times."
+          "id": "Infaq untuk pengembangan Bedug, dengan kode untuk versi Windows dan Linux dari rilis GitHub. Bedug tetap gratis; semua pilihan sama, kode menandai infaq Anda di aplikasi dan mematikan iklan bila versi itu menampilkannya. Kode tidak berlaku di versi App Store atau Google Play. Kode aktif di satu perangkat (perlu internet saat dimasukkan) dan bisa dipindah ke perangkat lain hingga 3 kali.",
+          "en": "Infaq supporting Bedug's development, with a code for the Windows and Linux builds on GitHub releases. Bedug stays free; every option is the same: the code marks your infaq in the app and turns ads off where that build shows them. Codes do not apply to App Store or Google Play builds. A code is active on one device (entering it needs internet) and can move to another device up to 3 times."
         }
       }
     ]
@@ -181,12 +181,12 @@
     "website": "https://catatsaja.ardeman.com",
     "about": [
       {
-        "id": "Catat Saja Plus adalah langganan opsional di akun Anda: grup kategori, anggaran, target tabungan, kata kunci, dan salin dari buku lain, sudah tersedia. Inti aplikasi tetap gratis.",
-        "en": "Catat Saja Plus is an optional subscription on your account: category groups, budgets, savings goals, keywords, and copy from another book are already there. The core app stays free."
+        "id": "Catat Saja Plus adalah akses prabayar opsional di akun Anda, tanpa perpanjangan otomatis: grup kategori, anggaran, target tabungan, kata kunci, dan salin dari buku lain. Inti aplikasi tetap gratis.",
+        "en": "Catat Saja Plus is optional prepaid access on your account, with no automatic renewal: category groups, budgets, savings goals, keywords, and copy from another book. The core app stays free."
       },
       {
-        "id": "Buka Plus dari menu akun di Catat Saja agar pembayaran terhubung ke akun Anda. Setelah bayar (Virtual Account atau kartu lewat Midtrans; QRIS menyusul), Plus aktif di akun dan konfirmasi dikirim ke email.",
-        "en": "Open Plus from the account menu in Catat Saja so payment ties to your account. After you pay (Virtual Account or card via Midtrans; QRIS when Midtrans finishes), Plus turns on and a confirmation is emailed."
+        "id": "Buka Plus dari menu akun di Catat Saja agar pembayaran terhubung ke akun Anda. Setelah bayar lewat Midtrans, Plus aktif di akun dan konfirmasi dikirim ke email.",
+        "en": "Open Plus from the account menu in Catat Saja so payment ties to your account. After you pay through Midtrans, Plus turns on and a confirmation is emailed."
       }
     ],
     "email": {

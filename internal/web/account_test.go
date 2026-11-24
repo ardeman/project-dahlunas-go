@@ -73,7 +73,7 @@ func TestAccountCheckoutPage(t *testing.T) {
 	}
 	// Policies cover prepaid access in both languages.
 	for path, want := range map[string]string{
-		"/terms?lang=en":   "<h2>Catat Saja Plus</h2><p>1 month Rp 19.000 · 3 months Rp 49.000 · 12 months Rp 149.000</p><p>",
+		"/terms?lang=en":   "<h2>Catat Saja Plus</h2><ul class=\"pills\"><li><span>1 month</span> Rp 19.000</li><li><span>3 months</span> Rp 49.000</li>",
 		"/terms?lang=id":   "tidak diperpanjang atau ditagih otomatis",
 		"/privacy?lang=en": "stores the account ID",
 		"/privacy?lang=id": "menyimpan ID dan email akun",
@@ -84,6 +84,26 @@ func TestAccountCheckoutPage(t *testing.T) {
 		h.ServeHTTP(w, httptest.NewRequest("GET", "https://shop.example"+path, nil))
 		if w.Code != 200 || !strings.Contains(w.Body.String(), want) {
 			t.Fatalf("%s: missing %q", path, want)
+		}
+	}
+}
+
+func TestPagesDescribeOnlyWhatIsSold(t *testing.T) {
+	s := &shop.Service{Store: &webStore{orders: map[string]shop.Order{}}, Gateway: &webGateway{}, Products: shop.CobaLagi(), BaseURL: "https://shop.example"}
+	h := Handler(Options{Shop: s, ClientKey: "public-client", Support: "support@example.com", RefundID: "Uji", RefundEN: "Test"})
+	for _, path := range []string{"/", "/about", "/terms", "/privacy"} {
+		for _, lang := range []string{"id", "en"} {
+			w := httptest.NewRecorder()
+			h.ServeHTTP(w, httptest.NewRequest("GET", "https://shop.example"+path+"?lang="+lang, nil))
+			body := strings.ToLower(w.Body.String())
+			if w.Code != 200 || !strings.Contains(body, "</html>") {
+				t.Fatal(path, w.Code, body)
+			}
+			for _, absent := range []string{"lemon squeezy", "prepaid", "prabayar", "catat saja", "one device", "satu perangkat", "(qris)"} {
+				if strings.Contains(body, absent) {
+					t.Errorf("%s %s mentions %q, which is not sold here", path, lang, absent)
+				}
+			}
 		}
 	}
 }
