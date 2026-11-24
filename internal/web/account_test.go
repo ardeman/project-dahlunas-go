@@ -73,7 +73,7 @@ func TestAccountCheckoutPage(t *testing.T) {
 	}
 	// Policies cover prepaid access in both languages.
 	for path, want := range map[string]string{
-		"/terms?lang=en":   "Catat Saja Plus · 3 months · Rp 49.000",
+		"/terms?lang=en":   "<h2>Catat Saja Plus</h2><p>1 month Rp 19.000 · 3 months Rp 49.000 · 12 months Rp 149.000</p><p>",
 		"/terms?lang=id":   "tidak diperpanjang atau ditagih otomatis",
 		"/privacy?lang=en": "stores the account ID",
 		"/privacy?lang=id": "menyimpan ID dan email akun",
