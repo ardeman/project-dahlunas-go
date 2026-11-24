@@ -32,6 +32,8 @@ A change is done only when the **Checks** command in `README.md` passes. If you 
 
 Record architectural choices here as one line each: date, decision, reason.
 
+- 2026-11-24: A submitted checkout form makes at most one usable order: its order ID is a hash of the form's CSRF value and inputs, checked before Turnstile since its tokens work once. A recent order is offered again from the browser's own storage (24 hours), never looked up by email, which would reveal other people's purchases. Buying again stays possible: Plus months add up and codes can be bought for others.
+
 - 2026-11-09: The shop has an `/about` business profile (owner Ardeman as an individual, Jakarta, contact, products, how buying works) linked from every footer, and projects carry optional `about` paragraphs and a `website`; Midtrans's review asked for a business profile and complete product descriptions on the site.
 - 2026-10-29: With checkout off, the shop still shows the catalog with rupiah prices and a disabled form ("Pembayaran segera dibuka"), not just a closed notice; Midtrans's review needs prices on the registered site, and its live keys come only after approval.
 - 2026-10-26: CI is two workflows, Deploy for pushes to `main` that change the service (running the checks through a reusable call first) and Checks for pull requests and docs or CI pushes, chosen by GitHub's path filters; a run's name is fixed before any job runs, so one workflow couldn't show in the Actions list whether it deployed. A push changing both kinds also starts Checks, whose first job compares the pushed files and skips the checks, so they run once.

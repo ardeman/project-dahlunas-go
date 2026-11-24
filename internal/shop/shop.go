@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/ed25519"
 	"crypto/rand"
+	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
 	"errors"
@@ -180,6 +181,11 @@ type Group struct {
 	Products []Product
 }
 
+// GroupSlug is the slug of the product's project page.
+func (o Order) GroupSlug() string {
+	return Groups([]Product{o.Product})[0].Slug
+}
+
 // From is the lowest price, for "from Rp 5.000" on the project's card.
 func (g Group) From() Product {
 	low := g.Products[0]
@@ -266,7 +272,93 @@ func randomHex(n int) (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
+// sessionWait is how long an order may take to get its payment session before
+// a resubmitted form gives up on it; it exceeds the gateway's request timeout.
+const sessionWait = 20 * time.Second
+
+// submittedID derives the order ID for one attempt of one submitted form, so
+// sending the form again finds the same order. The key must be a secret only
+// the buyer's browser holds.
+func submittedID(key, slug, email, accountToken string, attempt int) string {
+	sum := sha256.Sum256([]byte(strings.Join([]string{"dahlunas-order", key, slug, email, accountToken, strconv.Itoa(attempt)}, "\x00")))
+	return hex.EncodeToString(sum[:16])
+}
+
+// submitted reports the order a form already created and, when it has none that
+// can still be used, the ID for its next order.
+func (s *Service) submitted(ctx context.Context, key, slug, email, accountToken string) (Order, string, error) {
+	for attempt := 0; attempt < 8; attempt++ {
+		id := submittedID(key, slug, email, accountToken, attempt)
+		for wait := 0; ; wait++ {
+			o, err := s.Store.Get(ctx, id)
+			if errors.Is(err, ErrNotFound) {
+				return Order{}, id, nil
+			}
+			if err != nil {
+				return Order{}, "", err
+			}
+			open := o.State == "pending" || o.State == "capture"
+			if o.Paid || (open && (o.SnapToken != "" || o.CheckoutURL != "")) {
+				return o, "", nil
+			}
+			if !open || s.now().Sub(o.Created) >= sessionWait {
+				break
+			}
+			// The first submission is still opening its payment session.
+			if wait >= 8 {
+				return Order{}, "", ErrRetry
+			}
+			select {
+			case <-ctx.Done():
+				return Order{}, "", ctx.Err()
+			case <-time.After(250 * time.Millisecond):
+			}
+		}
+	}
+	return Order{}, "", ErrRetry
+}
+
+// Submitted returns the usable order this form already created, or ErrNotFound.
+func (s *Service) Submitted(ctx context.Context, key, slug, email, accountToken string) (Order, error) {
+	o, next, err := s.submitted(ctx, key, slug, email, accountToken)
+	if err == nil && next != "" {
+		return Order{}, ErrNotFound
+	}
+	return o, err
+}
+
+// CreateOnce creates at most one usable order for a submitted form.
+func (s *Service) CreateOnce(ctx context.Context, key, slug, email, accountToken string) (Order, error) {
+	if key == "" {
+		return Order{}, ErrInput
+	}
+	o, id, err := s.submitted(ctx, key, slug, email, accountToken)
+	if err != nil || id == "" {
+		return o, err
+	}
+	o, err = s.create(ctx, id, slug, email, accountToken)
+	if errors.Is(err, errTaken) {
+		// Another submission of the same form won the race.
+		o, id, err = s.submitted(ctx, key, slug, email, accountToken)
+		if err == nil && id != "" {
+			err = ErrRetry
+		}
+	}
+	return o, err
+}
+
+var errTaken = errors.New("shop: order already exists")
+
+// Create always creates a new order.
 func (s *Service) Create(ctx context.Context, slug, email, accountToken string) (Order, error) {
+	id, err := randomHex(16)
+	if err != nil {
+		return Order{}, err
+	}
+	return s.create(ctx, id, slug, email, accountToken)
+}
+
+func (s *Service) create(ctx context.Context, id, slug, email, accountToken string) (Order, error) {
 	var product Product
 	for _, p := range s.Products {
 		if p.Slug == slug && !p.Soon {
@@ -299,10 +391,6 @@ func (s *Service) Create(ctx context.Context, slug, email, accountToken string) 
 			return Order{}, errors.New("shop: signing unavailable")
 		}
 	}
-	id, err := randomHex(16)
-	if err != nil {
-		return Order{}, err
-	}
 	token, err := randomHex(32)
 	if err != nil {
 		return Order{}, err
@@ -315,7 +403,9 @@ func (s *Service) Create(ctx context.Context, slug, email, accountToken string) 
 		}
 	}
 	o := Order{PaymentProof: proof, ID: id, ViewToken: token, Email: email, AccountUID: accountUID, Product: product, Created: s.now(), State: "pending"}
-	if err := s.Store.Create(ctx, o); err != nil {
+	if err := s.Store.Create(ctx, o); errors.Is(err, ErrConflict) {
+		return Order{}, errTaken
+	} else if err != nil {
 		return Order{}, err
 	}
 	session, err := gateway.Create(ctx, payment.Checkout{Currency: product.CurrencyCode(), VariantID: product.VariantID, Proof: proof, ID: id, Email: email, Name: product.NameEN, Amount: product.Price, FinishURL: s.BaseURL + o.Path()})

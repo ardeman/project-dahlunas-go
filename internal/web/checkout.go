@@ -82,6 +82,16 @@ func registerShop(mux *http.ServeMux, config Options) {
 			fail(w, p, "Setujui ketentuan.", "Accept the terms.", 400)
 			return
 		}
+		product, email, accountToken := r.PostForm.Get("product"), strings.TrimSpace(r.PostForm.Get("email")), strings.TrimSpace(r.PostForm.Get("account_token"))
+		// Each rendered form has its own CSRF value, so it also identifies a
+		// resubmission. Check before the bot verifier, whose tokens work once.
+		if o, err := s.Submitted(r.Context(), cookie.Value, product, email, accountToken); err == nil {
+			http.Redirect(w, r, p.Href(o.Path()), http.StatusSeeOther)
+			return
+		} else if !errors.Is(err, shop.ErrNotFound) {
+			fail(w, p, "Pembayaran belum tersedia. Coba lagi nanti.", "Checkout unavailable. Try again later.", 503)
+			return
+		}
 		if config.BotVerifier != nil {
 			ok, err := config.BotVerifier.Verify(r.Context(), r.PostForm.Get("cf-turnstile-response"))
 			if err != nil {
@@ -93,7 +103,7 @@ func registerShop(mux *http.ServeMux, config Options) {
 				return
 			}
 		}
-		o, err := s.Create(r.Context(), r.PostForm.Get("product"), strings.TrimSpace(r.PostForm.Get("email")), strings.TrimSpace(r.PostForm.Get("account_token")))
+		o, err := s.CreateOnce(r.Context(), cookie.Value, product, email, accountToken)
 		if errors.Is(err, shop.ErrInput) {
 			fail(w, p, "Produk atau email tidak valid. Buka Plus dari Catat Saja jika itu yang dibeli.", "Invalid product or email. Open Plus from Catat Saja for that purchase.", 400)
 			return

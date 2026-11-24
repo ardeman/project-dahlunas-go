@@ -8,6 +8,7 @@
   <link rel="icon" href="/static/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
   <script src="/static/htmx.min.js" defer></script>
+  <script src="/static/recent.js" defer></script>
   {{if .TurnstileSiteKey}}<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>{{end}}
 </head>
 <body>
@@ -27,7 +28,13 @@
     {{$needAccount := and $g.Account (not .AccountToken)}}
     {{$off := or (not .Shop) $needAccount}}
     {{if $needAccount}}<p class="muted">{{.T "Buka Catat Saja Plus dari aplikasi (menu akun) untuk membayar. Tautan ini menghubungkan pembayaran ke akun Anda." "Open Catat Saja Plus from the app (account menu) to pay. That link ties the payment to your account."}}</p>{{end}}
-    <form method="post" action="{{.Href "/checkout"}}">
+    {{if not $off}}<div id="recent-order" data-project="{{$g.Slug}}" hidden>
+      <p data-state="pending">{{.T "Anda sudah punya pesanan di sini yang menunggu pembayaran." "You already have an order here waiting for payment."}}</p>
+      <p data-state="paid">{{.T "Anda baru saja membeli di sini." "You recently bought from here."}}</p>
+      <a rel="noreferrer">{{.T "Buka pesanan" "Open your order"}}</a>
+      <button type="button">{{.T "Beli lagi" "Buy again"}}</button>
+    </div>{{end}}
+    <form id="checkout" method="post" action="{{.Href "/checkout"}}">
       {{if .CSRF}}<input type="hidden" name="csrf" value="{{.CSRF}}">{{end}}
       {{if .AccountToken}}<input type="hidden" name="account_token" value="{{.AccountToken}}">{{end}}
       {{if $g.Amounts}}
