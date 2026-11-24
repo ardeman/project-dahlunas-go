@@ -27,7 +27,7 @@ sandbox, 2 in production), so each environment has its own catalog file.
 | --- | --- | --- | --- |
 | 1 | Coba Lagi: sponsor codes for GitHub builds | key 1 | key 2 (embedded default) |
 | 2 | Bedug: infaq codes for Windows and Linux builds (Microsoft Store, Flathub), one device at a time | key 1 ([`catalog-sandbox.json`](../config/catalog-sandbox.json)) | not yet: production key and catalog (desktop builds already accept sandbox codes) |
-| 3 | Catat Saja: Plus subscription written to the account | — | — (planned; README → Roadmap) |
+| 3 | Catat Saja: prepaid Plus written to the account (`delivery: account`) | in [`catalog-sandbox.json`](../config/catalog-sandbox.json) | set `SHOP_CATALOG_FILE` + deliver URL/secrets (README → Roadmap) |
 
 Bedug's phone and Mac App Store builds keep store in-app purchase, as store rules
 require; its codes, like Coba Lagi's, are checked offline. Catat Saja Plus is a
@@ -59,10 +59,17 @@ The top level is a nonempty array of projects. Each project contains:
   through `POST /activations` ([device activation](activation.md)). Only for apps
   that may go online; never for children's apps. Say so in the products'
   descriptions.
+- `delivery` (optional): `code` (default) mints an unlock code; `account`
+  delivers prepaid Plus to a Catat Saja uid (no `key_id`, each product needs
+  `months` 1–120). Account checkout requires a short-lived token from Catat Saja
+  (`?token=` / `account_token`) and `CATATSAJA_DELIVER_URL`,
+  `DAHLUNAS_DELIVERY_SECRET`, `PLUS_CHECKOUT_SECRET`.
 - `email`: `subject`, `thank_you`, and `instructions`, each with nonempty `id`
   (Indonesian) and `en` (English) text. Instructions appear on the paid page too.
 - `products`: a nonempty array, each containing `slug`, `id`, `price`, `name`,
-  and `description`, plus optional `gateway`, `currency`, `variant_id` and `image` (`id` and `en` file names, shown as a thumbnail beside the product). Names and descriptions each contain `id` and `en` text.
+  and `description`, plus optional `months` (account), `gateway`, `currency`,
+  `variant_id` and `image` (`id` and `en` file names, shown as a thumbnail beside
+  the product). Names and descriptions each contain `id` and `en` text.
 
 Product slugs must be unique across the entire shop, at most 100 characters,
 using lowercase letters, digits and single separating hyphens. Product IDs are

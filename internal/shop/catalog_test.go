@@ -98,7 +98,7 @@ func TestProjectOrderKeepsCatalogSnapshot(t *testing.T) {
 		}
 		return key, nil
 	}
-	o, err := s.Create(context.Background(), "second-project", "buyer@example.com")
+	o, err := s.Create(context.Background(), "second-project", "buyer@example.com", "")
 	if err != nil {
 		t.Fatal(err)
 	}

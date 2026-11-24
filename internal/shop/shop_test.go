@@ -112,7 +112,7 @@ func setup(t *testing.T) (*Service, *gateway, *mailer, Order) {
 	key := ed25519.NewKeyFromSeed(make([]byte, 32))
 	g, m := &gateway{}, &mailer{}
 	s := &Service{Store: &memoryStore{orders: map[string]Order{}}, Gateway: g, Mailer: m, Products: CobaLagi(), BaseURL: "https://shop.example", SigningKey: func(uint16, uint8) (ed25519.PrivateKey, error) { return key, nil }, Now: func() time.Time { return time.Date(2026, 10, 26, 0, 0, 0, 0, time.UTC) }}
-	o, err := s.Create(context.Background(), "coba-lagi-1", "buyer@example.com")
+	o, err := s.Create(context.Background(), "coba-lagi-1", "buyer@example.com", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +132,7 @@ func TestCheckoutUsesCatalogAndPrivateLink(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, input := range []struct{ slug, email string }{{"missing", "buyer@example.com"}, {"coba-lagi-1", "bad"}, {"coba-lagi-1", "Buyer <buyer@example.com>"}, {"coba-lagi-1", "a@example.com\r\nBcc:other@example.com"}} {
-		if _, err := s.Create(context.Background(), input.slug, input.email); !errors.Is(err, ErrInput) {
+		if _, err := s.Create(context.Background(), input.slug, input.email, ""); !errors.Is(err, ErrInput) {
 			t.Fatalf("input=%+v error=%v", input, err)
 		}
 	}
@@ -252,7 +252,7 @@ func TestMissingSigningKeyPreventsCheckout(t *testing.T) {
 	s, g, _, _ := setup(t)
 	g.checkout = payment.Checkout{}
 	s.SigningKey = func(uint16, uint8) (ed25519.PrivateKey, error) { return nil, errors.New("key unavailable") }
-	if _, err := s.Create(context.Background(), "coba-lagi-1", "buyer@example.com"); err == nil {
+	if _, err := s.Create(context.Background(), "coba-lagi-1", "buyer@example.com", ""); err == nil {
 		t.Fatal("missing key accepted")
 	}
 	if g.checkout.ID != "" {
@@ -273,7 +273,7 @@ func TestLemonSqueezyOrderBinding(t *testing.T) {
 			product.Price = 599
 			product.VariantID = "34"
 			s.Products = append(s.Products, product)
-			o, err := s.Create(context.Background(), product.Slug, "buyer@example.com")
+			o, err := s.Create(context.Background(), product.Slug, "buyer@example.com", "")
 			if err != nil {
 				t.Fatal(err)
 			}

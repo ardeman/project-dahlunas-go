@@ -164,5 +164,88 @@
         }
       }
     ]
+  },
+  {
+    "id": 3,
+    "delivery": "account",
+    "slug": "catat-saja",
+    "name": {
+      "id": "Catat Saja",
+      "en": "Catat Saja"
+    },
+    "tagline": {
+      "id": "Catatan, tugas, keuangan dan kesehatan",
+      "en": "Notes, tasks, finances and health"
+    },
+    "icon": "catat-saja-icon.png",
+    "website": "https://catatsaja.ardeman.com",
+    "about": [
+      {
+        "id": "Catat Saja Plus adalah langganan opsional di akun Anda: grup kategori, anggaran, target tabungan, kata kunci, dan salin dari buku lain, sudah tersedia. Inti aplikasi tetap gratis.",
+        "en": "Catat Saja Plus is an optional subscription on your account: category groups, budgets, savings goals, keywords, and copy from another book are already there. The core app stays free."
+      },
+      {
+        "id": "Buka Plus dari menu akun di Catat Saja agar pembayaran terhubung ke akun Anda. Setelah bayar (Virtual Account atau kartu lewat Midtrans; QRIS menyusul), Plus aktif di akun dan konfirmasi dikirim ke email.",
+        "en": "Open Plus from the account menu in Catat Saja so payment ties to your account. After you pay (Virtual Account or card via Midtrans; QRIS when Midtrans finishes), Plus turns on and a confirmation is emailed."
+      }
+    ],
+    "email": {
+      "subject": {
+        "id": "Catat Saja Plus",
+        "en": "Your Catat Saja Plus"
+      },
+      "thank_you": {
+        "id": "Terima kasih! Catat Saja Plus sudah aktif di akun Anda.",
+        "en": "Thank you! Catat Saja Plus is on your account."
+      },
+      "instructions": {
+        "id": "Buka Catat Saja (sudah masuk) untuk memakai fitur Plus. Perpanjang dari menu akun sebelum masa berakhir.",
+        "en": "Open Catat Saja while signed in to use Plus. Renew from the account menu before it ends."
+      }
+    },
+    "products": [
+      {
+        "slug": "catat-saja-1m",
+        "id": 1,
+        "months": 1,
+        "price": 19000,
+        "name": {
+          "id": "Catat Saja Plus",
+          "en": "Catat Saja Plus"
+        },
+        "description": {
+          "id": "Plus prabayar di akun Catat Saja Anda. Semua pilihan sama; bedanya hanya lama aktif (1, 3, atau 12 bulan).",
+          "en": "Prepaid Plus on your Catat Saja account. Every option is the same; only the length differs (1, 3, or 12 months)."
+        }
+      },
+      {
+        "slug": "catat-saja-3m",
+        "id": 1,
+        "months": 3,
+        "price": 49000,
+        "name": {
+          "id": "Catat Saja Plus",
+          "en": "Catat Saja Plus"
+        },
+        "description": {
+          "id": "Plus prabayar di akun Catat Saja Anda. Semua pilihan sama; bedanya hanya lama aktif (1, 3, atau 12 bulan).",
+          "en": "Prepaid Plus on your Catat Saja account. Every option is the same; only the length differs (1, 3, or 12 months)."
+        }
+      },
+      {
+        "slug": "catat-saja-12m",
+        "id": 1,
+        "months": 12,
+        "price": 149000,
+        "name": {
+          "id": "Catat Saja Plus",
+          "en": "Catat Saja Plus"
+        },
+        "description": {
+          "id": "Plus prabayar di akun Catat Saja Anda. Semua pilihan sama; bedanya hanya lama aktif (1, 3, atau 12 bulan).",
+          "en": "Prepaid Plus on your Catat Saja account. Every option is the same; only the length differs (1, 3, or 12 months)."
+        }
+      }
+    ]
   }
 ]

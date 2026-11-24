@@ -2,6 +2,7 @@ package web
 
 import (
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 )
@@ -15,6 +16,16 @@ type page struct {
 	// chosen is true when the language came from ?lang, so links keep it.
 	// Firebase Hosting forwards no cookie but __session, so the URL holds the choice.
 	chosen bool
+	// accountToken is a verified checkout token the language links must keep.
+	accountToken string
+}
+
+// LangHref links to this page in another language.
+func (p page) LangHref(lang string) string {
+	if p.accountToken == "" {
+		return "?lang=" + lang
+	}
+	return "?" + url.Values{"lang": {lang}, "token": {p.accountToken}}.Encode()
 }
 
 func newPage(r *http.Request, config Options) page {
@@ -78,4 +89,12 @@ func (p page) header(w http.ResponseWriter) {
 	if !p.chosen {
 		w.Header().Add("Vary", "Accept-Language")
 	}
+}
+
+// Months names a prepaid duration.
+func (p page) Months(n int) string {
+	if p.EN() && n == 1 {
+		return "1 month"
+	}
+	return strconv.Itoa(n) + " " + p.T("bulan", "months")
 }

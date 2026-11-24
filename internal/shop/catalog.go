@@ -40,17 +40,21 @@ type ProjectConfig struct {
 	Image   Text   `json:"image"`
 	// About describes the project on its page, one paragraph per entry;
 	// Website is its https home page.
-	About      []Text          `json:"about,omitempty"`
-	Website    string          `json:"website,omitempty"`
-	Activation bool            `json:"activation,omitempty"`
-	Email      EmailCopy       `json:"email"`
-	Products   []ProductConfig `json:"products"`
+	About      []Text `json:"about,omitempty"`
+	Website    string `json:"website,omitempty"`
+	Activation bool   `json:"activation,omitempty"`
+	// Delivery is "code" (default unlock codes) or "account" (Catat Saja Plus).
+	Delivery string          `json:"delivery,omitempty"`
+	Email    EmailCopy       `json:"email"`
+	Products []ProductConfig `json:"products"`
 }
 
 type ProductConfig struct {
-	Slug        string `json:"slug"`
-	ID          uint16 `json:"id"`
-	Price       int64  `json:"price"`
+	Slug  string `json:"slug"`
+	ID    uint16 `json:"id"`
+	Price int64  `json:"price"`
+	// Months is required for account delivery: prepaid Plus length.
+	Months      int    `json:"months,omitempty"`
 	Name        Text   `json:"name"`
 	Description Text   `json:"description"`
 	Image       Text   `json:"image"`
@@ -93,8 +97,21 @@ func ParseCatalog(r io.Reader) ([]Product, error) {
 	asset := func(name string) bool { return assetPattern.MatchString(name) && len(name) <= 100 }
 	var products []Product
 	for _, project := range projects {
-		if project.ID == 0 || project.KeyID == 0 || projectIDs[project.ID] || len(project.Products) == 0 {
-			return nil, errors.New("catalog: project IDs must be unique and nonzero, with a key and products")
+		account := project.Delivery == "account"
+		if project.Delivery != "" && project.Delivery != "code" && !account {
+			return nil, fmt.Errorf("catalog: project %d delivery must be code or account", project.ID)
+		}
+		if project.ID == 0 || projectIDs[project.ID] || len(project.Products) == 0 {
+			return nil, errors.New("catalog: project IDs must be unique and nonzero, with products")
+		}
+		if !account && project.KeyID == 0 {
+			return nil, errors.New("catalog: code projects need a nonzero key_id")
+		}
+		if account && project.KeyID != 0 {
+			return nil, fmt.Errorf("catalog: account project %d must omit key_id (no unlock codes)", project.ID)
+		}
+		if account && project.Activation {
+			return nil, fmt.Errorf("catalog: account project %d cannot use device activation", project.ID)
 		}
 		projectIDs[project.ID] = true
 		if project.Slug == "" {
@@ -125,6 +142,12 @@ func ParseCatalog(r io.Reader) ([]Product, error) {
 			if !slugPattern.MatchString(p.Slug) || len(p.Slug) > 100 || slugs[p.Slug] || p.ID == 0 || p.Price <= 0 || p.Price > 10_000_000 || !validText(p.Name) || !validText(p.Description) || !optional(p.Image, asset) {
 				return nil, fmt.Errorf("catalog: invalid product in project %d (unique slug, nonzero ID, bilingual text and price 1–10000000 required)", project.ID)
 			}
+			if account && (p.Months < 1 || p.Months > 120) {
+				return nil, fmt.Errorf("catalog: account product %s needs months between 1 and 120", p.Slug)
+			}
+			if !account && p.Months != 0 {
+				return nil, fmt.Errorf("catalog: code product %s must omit months", p.Slug)
+			}
 			gateway, currency := p.Gateway, p.Currency
 			if gateway == "" {
 				gateway = payment.Midtrans
@@ -136,7 +159,7 @@ func ParseCatalog(r io.Reader) ([]Product, error) {
 				return nil, errors.New("catalog: require Midtrans/IDR or Lemon Squeezy/USD with numeric variant_id (USD limit 100000 cents)")
 			}
 			slugs[p.Slug] = true
-			products = append(products, Product{Slug: p.Slug, NameID: p.Name.ID, NameEN: p.Name.EN, DescriptionID: p.Description.ID, DescriptionEN: p.Description.EN, Price: p.Price, Project: project.ID, Product: p.ID, KeyID: project.KeyID, Delivery: copy, Gateway: gateway, Currency: currency, VariantID: p.VariantID, ProjectSlug: project.Slug, ProjectName: project.Name, Tagline: project.Tagline, Icon: project.Icon, ProjectImage: project.Image, About: project.About, Website: project.Website, Image: p.Image, Activation: project.Activation})
+			products = append(products, Product{Slug: p.Slug, NameID: p.Name.ID, NameEN: p.Name.EN, DescriptionID: p.Description.ID, DescriptionEN: p.Description.EN, Price: p.Price, Project: project.ID, Product: p.ID, KeyID: project.KeyID, Months: p.Months, Account: account, Delivery: copy, Gateway: gateway, Currency: currency, VariantID: p.VariantID, ProjectSlug: project.Slug, ProjectName: project.Name, Tagline: project.Tagline, Icon: project.Icon, ProjectImage: project.Image, About: project.About, Website: project.Website, Image: p.Image, Activation: project.Activation})
 		}
 	}
 	return products, nil

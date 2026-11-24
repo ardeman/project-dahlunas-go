@@ -293,7 +293,7 @@ func TestProjectCardsLeadToAmountChoice(t *testing.T) {
 	}
 	page := get("/projects/bedug?lang=en")
 	body := page.Body.String()
-	if page.Code != 200 || strings.Count(body, `class="amount"`) != 3 || strings.Count(body, "QRIS via Midtrans") != 1 || strings.Contains(body, "Coba Lagi") || !strings.Contains(body, "All projects") || page.Header().Get("Set-Cookie") == "" {
+	if page.Code != 200 || strings.Count(body, `class="amount"`) != 3 || strings.Count(body, "Pay via Midtrans") != 1 || strings.Contains(body, "Coba Lagi") || !strings.Contains(body, "All projects") || page.Header().Get("Set-Cookie") == "" {
 		t.Fatal(page.Code, body)
 	}
 	if w := get("/projects/missing"); w.Code != 404 {

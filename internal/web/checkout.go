@@ -11,9 +11,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ardeman/project-dahlunas-go/internal/account"
 	"github.com/ardeman/project-dahlunas-go/internal/payment"
 	"github.com/ardeman/project-dahlunas-go/internal/shop"
 )
+
+func accountVerify(secret, token string) (account.Claims, error) {
+	return account.VerifyToken(secret, token, time.Now().UTC())
+}
 
 func render(w http.ResponseWriter, p page, name string, data any) {
 	p.header(w)
@@ -88,9 +93,9 @@ func registerShop(mux *http.ServeMux, config Options) {
 				return
 			}
 		}
-		o, err := s.Create(r.Context(), r.PostForm.Get("product"), strings.TrimSpace(r.PostForm.Get("email")))
+		o, err := s.Create(r.Context(), r.PostForm.Get("product"), strings.TrimSpace(r.PostForm.Get("email")), strings.TrimSpace(r.PostForm.Get("account_token")))
 		if errors.Is(err, shop.ErrInput) {
-			fail(w, p, "Produk atau email tidak valid.", "Invalid product or email.", 400)
+			fail(w, p, "Produk atau email tidak valid. Buka Plus dari Catat Saja jika itu yang dibeli.", "Invalid product or email. Open Plus from Catat Saja for that purchase.", 400)
 			return
 		}
 		if err != nil {
@@ -163,11 +168,25 @@ func checkoutForm(w http.ResponseWriter, r *http.Request, config Options, g shop
 		http.SetCookie(w, &http.Cookie{Name: csrfCookie, Value: token, Path: "/", HttpOnly: true, Secure: strings.HasPrefix(config.Shop.BaseURL, "https://"), SameSite: http.SameSiteStrictMode, MaxAge: 3600})
 		w.Header().Set("Cache-Control", "no-store")
 	}
+	accountToken := strings.TrimSpace(r.URL.Query().Get("token"))
+	accountEmail := ""
+	if g.Account && accountToken != "" && config.Shop != nil && config.Shop.CheckoutSecret != "" {
+		if claims, err := accountVerify(config.Shop.CheckoutSecret, accountToken); err == nil {
+			accountEmail = claims.Email
+		} else {
+			accountToken = ""
+		}
+	}
 	p := newPage(r, config)
+	if accountEmail != "" {
+		p.accountToken = accountToken
+	}
 	render(w, p, "project.html", struct {
 		page
-		CSRF    string
-		Group   shop.Group
-		Listing bool
-	}{p, token, g, len(config.groups()) > 1})
+		CSRF         string
+		Group        shop.Group
+		Listing      bool
+		AccountToken string
+		AccountEmail string
+	}{p, token, g, len(config.groups()) > 1, accountToken, accountEmail})
 }

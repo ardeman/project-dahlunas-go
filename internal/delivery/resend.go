@@ -24,10 +24,17 @@ func New(key, from, support string) *Resend {
 
 func (r *Resend) Send(ctx context.Context, o shop.Order) error {
 	copy := o.Product.DeliveryCopy()
+	text := copy.ThankYou.ID + " / " + copy.ThankYou.EN + "\n\n"
+	if o.Product.Account {
+		text += copy.Instructions.ID + "\n" + copy.Instructions.EN + "\n\n"
+	} else {
+		text += o.Code + "\n\n" + copy.Instructions.ID + "\n" + copy.Instructions.EN + "\n\n"
+	}
+	text += "Pesanan / Order: " + o.ID + "\nBantuan / Support: " + r.support
 	body := map[string]any{
 		"from": r.from, "to": []string{o.Email}, "reply_to": r.support,
 		"subject": copy.Subject.ID + " / " + copy.Subject.EN,
-		"text":    copy.ThankYou.ID + " / " + copy.ThankYou.EN + "\n\n" + o.Code + "\n\n" + copy.Instructions.ID + "\n" + copy.Instructions.EN + "\n\nPesanan / Order: " + o.ID + "\nBantuan / Support: " + r.support,
+		"text":    text,
 	}
 	b, err := json.Marshal(body)
 	if err != nil {
@@ -36,7 +43,11 @@ func (r *Resend) Send(ctx context.Context, o shop.Order) error {
 	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, r.endpoint, bytes.NewReader(b))
 	req.Header.Set("Authorization", "Bearer "+r.key)
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Idempotency-Key", "unlock/"+o.ID)
+	key := "unlock/" + o.ID
+	if o.Product.Account {
+		key = "plus/" + o.ID
+	}
+	req.Header.Set("Idempotency-Key", key)
 	resp, err := r.client.Do(req)
 	if err != nil {
 		return errors.New("delivery: unavailable")

@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/ardeman/project-dahlunas-go/internal/account"
 	"github.com/ardeman/project-dahlunas-go/internal/delivery"
 	"github.com/ardeman/project-dahlunas-go/internal/lemonsqueezy"
 	"github.com/ardeman/project-dahlunas-go/internal/midtrans"
@@ -107,9 +108,21 @@ func Handler() (http.Handler, error) {
 	if err != nil || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || u.Path != "" || (u.Scheme != "https" && !(u.Scheme == "http" && !production && (u.Hostname() == "localhost" || u.Hostname() == "127.0.0.1" || u.Hostname() == "::1"))) {
 		return nil, errors.New("SHOP_BASE_URL must be an HTTPS origin (sandbox also permits HTTP localhost)")
 	}
+	needsAccount := false
 	for _, p := range products {
+		if p.Account {
+			needsAccount = true
+			continue
+		}
 		if _, err := unlock.KeyFromEnv(p.Project, p.KeyID); err != nil {
 			return nil, err
+		}
+	}
+	if needsAccount {
+		for _, name := range []string{"CATATSAJA_DELIVER_URL", "DAHLUNAS_DELIVERY_SECRET", "PLUS_CHECKOUT_SECRET"} {
+			if strings.TrimSpace(os.Getenv(name)) == "" {
+				return nil, fmt.Errorf("%s is required when the catalog has account products", name)
+			}
 		}
 	}
 	store, err := orderstore.New(os.Getenv("GOOGLE_CLOUD_PROJECT"), os.Getenv("GOOGLE_OAUTH_ACCESS_TOKEN"), os.Getenv("FIRESTORE_EMULATOR_HOST"), production)
@@ -127,7 +140,12 @@ func Handler() (http.Handler, error) {
 		}
 		gateways[payment.LemonSqueezy] = client
 	}
-	config.Shop = &shop.Service{Store: store, Activations: store, Gateways: gateways, Mailer: delivery.New(os.Getenv("RESEND_API_KEY"), os.Getenv("RESEND_FROM"), config.Support), Products: products, BaseURL: base, SigningKey: unlock.KeyFromEnv}
+	service := &shop.Service{Store: store, Activations: store, Gateways: gateways, Mailer: delivery.New(os.Getenv("RESEND_API_KEY"), os.Getenv("RESEND_FROM"), config.Support), Products: products, BaseURL: base, SigningKey: unlock.KeyFromEnv}
+	if needsAccount {
+		service.CheckoutSecret = os.Getenv("PLUS_CHECKOUT_SECRET")
+		service.Accounts = &account.Deliverer{URL: strings.TrimSpace(os.Getenv("CATATSAJA_DELIVER_URL")), Secret: os.Getenv("DAHLUNAS_DELIVERY_SECRET")}
+	}
+	config.Shop = service
 	siteKey, secret := strings.TrimSpace(os.Getenv("TURNSTILE_SITE_KEY")), strings.TrimSpace(os.Getenv("TURNSTILE_SECRET_KEY"))
 	if (siteKey == "") != (secret == "") || (production && siteKey == "") {
 		return nil, errors.New("TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY must both be set; required for production checkout")

@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ardeman/project-dahlunas-go/internal/account"
 	"github.com/ardeman/project-dahlunas-go/internal/payment"
 	"github.com/ardeman/project-dahlunas-go/internal/unlock"
 )
@@ -30,8 +31,12 @@ type Product struct {
 	Price                                              int64
 	Project, Product                                   uint16
 	KeyID                                              uint8
-	Delivery                                           EmailCopy
-	Gateway, Currency, VariantID                       string
+	// Months is set for account (prepaid Plus) products.
+	Months int
+	// Account means delivery writes Plus on Catat Saja, not an unlock code.
+	Account                      bool
+	Delivery                     EmailCopy
+	Gateway, Currency, VariantID string
 	// ProjectSlug, ProjectName, Tagline, Icon and the images only present the
 	// product in the shop.
 	ProjectSlug         string
@@ -47,12 +52,15 @@ type Product struct {
 }
 
 type Order struct {
-	ID, ViewToken, Email                  string
-	Product                               Product
-	Created                               time.Time
-	SnapToken, Code, State                string
-	Paid                                  bool
-	EmailSent                             bool
+	ID, ViewToken, Email   string
+	Product                Product
+	Created                time.Time
+	SnapToken, Code, State string
+	Paid                   bool
+	EmailSent              bool
+	// AccountUID binds a Catat Saja checkout; AccountDone after deliverPlus.
+	AccountUID                            string
+	AccountDone                           bool
 	CheckoutURL, PaymentProof, ProviderID string
 	EmailFirstAttempt, EmailLease         time.Time
 	// Revision is the store's compare-and-swap token, never part of the record.
@@ -71,8 +79,16 @@ type Store interface {
 	Unpaid(context.Context) ([]Order, error)
 }
 
-// DeliveryPending reports a paid order whose email is not confirmed sent.
-func (o Order) DeliveryPending() bool { return o.Paid && !o.EmailSent }
+// DeliveryPending reports a paid order still waiting on account delivery or email.
+func (o Order) DeliveryPending() bool {
+	if !o.Paid {
+		return false
+	}
+	if o.Product.Account && !o.AccountDone {
+		return true
+	}
+	return !o.EmailSent
+}
 
 // AwaitingPayment reports an order with no final payment state yet.
 func (o Order) AwaitingPayment() bool { return !o.Paid && o.State == "pending" }
@@ -92,16 +108,24 @@ type Mailer interface {
 	Send(context.Context, Order) error
 }
 
+// AccountDeliverer turns on Catat Saja Plus after payment.
+type AccountDeliverer interface {
+	Deliver(ctx context.Context, uid, orderID string, months int, paidAt time.Time) error
+}
+
 type Service struct {
 	Store       Store
 	Activations ActivationStore
-	Gateway     payment.Gateway
-	Gateways    map[string]payment.Gateway
-	Mailer      Mailer
-	Products    []Product
-	BaseURL     string
-	SigningKey  func(uint16, uint8) (ed25519.PrivateKey, error)
-	Now         func() time.Time
+	Accounts    AccountDeliverer
+	// CheckoutSecret verifies Catat Saja account tokens.
+	CheckoutSecret string
+	Gateway        payment.Gateway
+	Gateways       map[string]payment.Gateway
+	Mailer         Mailer
+	Products       []Product
+	BaseURL        string
+	SigningKey     func(uint16, uint8) (ed25519.PrivateKey, error)
+	Now            func() time.Time
 }
 
 // GatewayName and CurrencyCode preserve orders from the original IDR checkout.
@@ -146,7 +170,9 @@ type Group struct {
 	Description Text
 	// Amounts is set when the products differ only in price, so the shop
 	// offers them as a choice of amount.
-	Amounts  bool
+	Amounts bool
+	// Account is set when the project delivers Plus to a Catat Saja account.
+	Account  bool
 	Products []Product
 }
 
@@ -174,9 +200,12 @@ func Groups(products []Product) []Group {
 			if slug == "" {
 				slug = strconv.Itoa(int(p.Project))
 			}
-			groups = append(groups, Group{Slug: slug, Name: p.ProjectName, Tagline: p.Tagline, Icon: p.Icon, Image: p.ProjectImage, About: p.About, Website: p.Website, Description: Text{p.DescriptionID, p.DescriptionEN}, Amounts: true})
+			groups = append(groups, Group{Slug: slug, Name: p.ProjectName, Tagline: p.Tagline, Icon: p.Icon, Image: p.ProjectImage, About: p.About, Website: p.Website, Description: Text{p.DescriptionID, p.DescriptionEN}, Amounts: true, Account: p.Account})
 		}
 		g := &groups[i]
+		if g.Account != p.Account {
+			g.Account = false
+		}
 		if g.Description != (Text{p.DescriptionID, p.DescriptionEN}) {
 			g.Description = Text{}
 		}
@@ -233,11 +262,7 @@ func randomHex(n int) (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-func (s *Service) Create(ctx context.Context, slug, email string) (Order, error) {
-	address, err := mail.ParseAddress(email)
-	if err != nil || address.Address != email || len(email) > 254 || strings.ContainsAny(email, "\r\n") {
-		return Order{}, ErrInput
-	}
+func (s *Service) Create(ctx context.Context, slug, email, accountToken string) (Order, error) {
 	var product Product
 	for _, p := range s.Products {
 		if p.Slug == slug {
@@ -249,9 +274,26 @@ func (s *Service) Create(ctx context.Context, slug, email string) (Order, error)
 	if product.Price <= 0 || gateway == nil {
 		return Order{}, ErrInput
 	}
-	// Validate the key before accepting a payment.
-	if _, err := s.SigningKey(product.Project, product.KeyID); err != nil {
-		return Order{}, errors.New("shop: signing unavailable")
+	accountUID := ""
+	if product.Account {
+		if product.Months < 1 || s.Accounts == nil || s.CheckoutSecret == "" {
+			return Order{}, errors.New("shop: account delivery unavailable")
+		}
+		claims, err := account.VerifyToken(s.CheckoutSecret, accountToken, s.now())
+		if err != nil {
+			return Order{}, ErrInput
+		}
+		email = claims.Email
+		accountUID = claims.UID
+	} else {
+		address, err := mail.ParseAddress(email)
+		if err != nil || address.Address != email || len(email) > 254 || strings.ContainsAny(email, "\r\n") {
+			return Order{}, ErrInput
+		}
+		// Validate the key before accepting a payment.
+		if _, err := s.SigningKey(product.Project, product.KeyID); err != nil {
+			return Order{}, errors.New("shop: signing unavailable")
+		}
 	}
 	id, err := randomHex(16)
 	if err != nil {
@@ -268,7 +310,7 @@ func (s *Service) Create(ctx context.Context, slug, email string) (Order, error)
 			return Order{}, err
 		}
 	}
-	o := Order{PaymentProof: proof, ID: id, ViewToken: token, Email: email, Product: product, Created: s.now(), State: "pending"}
+	o := Order{PaymentProof: proof, ID: id, ViewToken: token, Email: email, AccountUID: accountUID, Product: product, Created: s.now(), State: "pending"}
 	if err := s.Store.Create(ctx, o); err != nil {
 		return Order{}, err
 	}
@@ -350,25 +392,29 @@ func (s *Service) apply(ctx context.Context, name string, status payment.Status)
 		}
 		o.State = status.State
 		if status.Paid {
-			key, err := s.SigningKey(o.Product.Project, o.Product.KeyID)
-			if err != nil {
-				return errors.New("shop: signing unavailable")
-			}
-			// The code ID and issue date are fixed at order creation. Even racing
-			// notifications generate exactly the same signed code.
-			id, err := hex.DecodeString(o.ID)
-			if err != nil || len(id) != 16 {
-				return errors.New("shop: invalid stored order")
-			}
-			day, err := unlock.IssuedDay(o.Created)
-			if err != nil {
-				return err
-			}
-			code := unlock.Code{Version: unlock.Version, KeyID: o.Product.KeyID, Project: o.Product.Project, Product: o.Product.Product, IssuedDay: day}
-			copy(code.ID[:], id)
-			o.Code, err = unlock.Sign(key, code)
-			if err != nil {
-				return err
+			if !o.Product.Account {
+				key, err := s.SigningKey(o.Product.Project, o.Product.KeyID)
+				if err != nil {
+					return errors.New("shop: signing unavailable")
+				}
+				// The code ID and issue date are fixed at order creation. Even racing
+				// notifications generate exactly the same signed code.
+				id, err := hex.DecodeString(o.ID)
+				if err != nil || len(id) != 16 {
+					return errors.New("shop: invalid stored order")
+				}
+				day, err := unlock.IssuedDay(o.Created)
+				if err != nil {
+					return err
+				}
+				code := unlock.Code{Version: unlock.Version, KeyID: o.Product.KeyID, Project: o.Product.Project, Product: o.Product.Product, IssuedDay: day}
+				copy(code.ID[:], id)
+				o.Code, err = unlock.Sign(key, code)
+				if err != nil {
+					return err
+				}
+			} else if o.AccountUID == "" || o.Product.Months < 1 {
+				return errors.New("shop: account order incomplete")
 			}
 			o.Paid = true
 		}
@@ -390,13 +436,17 @@ func (s *Service) apply(ctx context.Context, name string, status payment.Status)
 // Deliver uses a durable lease and a stable provider idempotency key. Retries
 // stop before the provider's 24-hour deduplication expires; ambiguous late
 // deliveries require operator review instead of risking a duplicate email.
+// Account products call Catat Saja before the receipt email.
 func (s *Service) Deliver(ctx context.Context, id string) error {
 	for i := 0; i < 8; i++ {
 		o, err := s.Store.Get(ctx, id)
 		if err != nil {
 			return err
 		}
-		if !o.Paid || o.EmailSent {
+		if !o.Paid {
+			return nil
+		}
+		if o.EmailSent && (!o.Product.Account || o.AccountDone) {
 			return nil
 		}
 		now := s.now()
@@ -412,6 +462,33 @@ func (s *Service) Deliver(ctx context.Context, id string) error {
 		} else if err != nil {
 			return err
 		}
+		if o.Product.Account && !o.AccountDone {
+			if s.Accounts == nil {
+				return ErrRetry
+			}
+			if err := s.Accounts.Deliver(ctx, o.AccountUID, o.ID, o.Product.Months, o.Created); err != nil {
+				return ErrRetry
+			}
+			for j := 0; j < 8; j++ {
+				current, err := s.Store.Get(ctx, id)
+				if err != nil {
+					return err
+				}
+				current.AccountDone = true
+				err = s.Store.Save(ctx, current)
+				if errors.Is(err, ErrConflict) {
+					continue
+				}
+				if err != nil {
+					return err
+				}
+				o = current
+				break
+			}
+		}
+		if o.EmailSent {
+			return nil
+		}
 		if err := s.Mailer.Send(ctx, o); err != nil {
 			return ErrRetry
 		}
@@ -423,6 +500,9 @@ func (s *Service) Deliver(ctx context.Context, id string) error {
 			}
 			current.EmailSent = true
 			current.EmailLease = time.Time{}
+			if o.Product.Account {
+				current.AccountDone = true
+			}
 			err = s.Store.Save(ctx, current)
 			if errors.Is(err, ErrConflict) {
 				continue
