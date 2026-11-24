@@ -92,6 +92,7 @@ type notification struct {
 	Signature string `json:"signature_key"`
 	State     string `json:"transaction_status"`
 	Fraud     string `json:"fraud_status"`
+	Method    string `json:"payment_type"`
 }
 
 func (c *Client) Notification(ctx context.Context, data []byte, _ string) (payment.Status, error) {
@@ -124,7 +125,20 @@ func (c *Client) Check(ctx context.Context, id string) (payment.Status, error) {
 		return payment.Status{}, errors.New("midtrans: invalid status")
 	}
 	paid := current.Code == "200" && ((current.State == "settlement" && (current.Fraud == "" || current.Fraud == "accept")) || (current.State == "capture" && current.Fraud == "accept"))
-	return payment.Status{ID: current.ID, Amount: amount, State: current.State, Paid: paid, Currency: "IDR"}, nil
+	return payment.Status{ID: current.ID, Amount: amount, State: current.State, Paid: paid, Method: current.Method, Currency: "IDR"}, nil
+}
+
+// Cancel asks Midtrans to cancel a transaction. Midtrans refuses, with a
+// status_code other than 200, once the transaction is settled or has ended.
+func (c *Client) Cancel(ctx context.Context, id string) error {
+	var result notification
+	if err := c.request(ctx, http.MethodPost, c.statusURL+url.PathEscape(id)+"/cancel", nil, &result); err != nil {
+		return err
+	}
+	if result.Code != "200" {
+		return errors.New("midtrans: cancel refused")
+	}
+	return nil
 }
 
 func rupiah(s string) (int64, error) {

@@ -59,8 +59,10 @@ type Order struct {
 	Product                Product
 	Created                time.Time
 	SnapToken, Code, State string
-	Paid                   bool
-	EmailSent              bool
+	// Method is the payment type chosen at the gateway.
+	Method    string
+	Paid      bool
+	EmailSent bool
 	// AccountUID binds a Catat Saja checkout; AccountDone after deliverPlus.
 	AccountUID                            string
 	AccountDone                           bool
@@ -332,11 +334,18 @@ func (s *Service) CreateOnce(ctx context.Context, key, slug, email, accountToken
 	if key == "" {
 		return Order{}, ErrInput
 	}
+	return s.once(ctx, key, slug, email, accountToken, func(id string) (Order, error) {
+		return s.create(ctx, id, slug, email, accountToken)
+	})
+}
+
+// once returns the usable order for these inputs, making it if there is none.
+func (s *Service) once(ctx context.Context, key, slug, email, accountToken string, create func(id string) (Order, error)) (Order, error) {
 	o, id, err := s.submitted(ctx, key, slug, email, accountToken)
 	if err != nil || id == "" {
 		return o, err
 	}
-	o, err = s.create(ctx, id, slug, email, accountToken)
+	o, err = create(id)
 	if errors.Is(err, errTaken) {
 		// Another submission of the same form won the race.
 		o, id, err = s.submitted(ctx, key, slug, email, accountToken)
@@ -391,6 +400,12 @@ func (s *Service) create(ctx context.Context, id, slug, email, accountToken stri
 			return Order{}, errors.New("shop: signing unavailable")
 		}
 	}
+	return s.open(ctx, id, product, email, accountUID)
+}
+
+// open stores a validated order and starts its payment session.
+func (s *Service) open(ctx context.Context, id string, product Product, email, accountUID string) (Order, error) {
+	gateway := s.gateway(product.GatewayName())
 	token, err := randomHex(32)
 	if err != nil {
 		return Order{}, err
@@ -427,6 +442,76 @@ func (s *Service) create(ctx context.Context, id, slug, email, accountToken stri
 		return current, err
 	}
 	return Order{}, ErrConflict
+}
+
+// ended reports a payment that can no longer be completed.
+func (o Order) ended() bool {
+	return !o.Paid && o.State != "pending" && o.State != "capture"
+}
+
+// CanChangePayment reports whether the buyer can swap the chosen method. Cards
+// are excluded: cancelling could void a charge that is being captured.
+func (o Order) CanChangePayment() bool {
+	return !o.Paid && o.State == "pending" && o.Product.GatewayName() == payment.Midtrans && o.Method != "" && o.Method != "credit_card"
+}
+
+// ChangePayment cancels a pending payment and opens a new order for the same
+// purchase. It returns the order itself when that turns out to be paid. Only
+// one usable replacement exists per order, however often this is called.
+func (s *Service) ChangePayment(ctx context.Context, id, token string) (Order, error) {
+	o, err := s.View(ctx, id, token)
+	if err != nil || o.Paid {
+		return o, err
+	}
+	name := o.Product.GatewayName()
+	gateway := s.gateway(name)
+	canceler, _ := gateway.(payment.Canceler)
+	checker, _ := gateway.(payment.Checker)
+	if o.CanChangePayment() && canceler != nil && checker != nil {
+		status, err := checker.Check(ctx, id)
+		if err != nil {
+			return Order{}, err
+		}
+		if status.State == "pending" && status.Method != "credit_card" {
+			// The check below decides, since a payment can win this race.
+			_ = canceler.Cancel(ctx, id)
+			if status, err = checker.Check(ctx, id); err != nil {
+				return Order{}, err
+			}
+		}
+		applied := s.apply(ctx, name, status)
+		if o, err = s.View(ctx, id, token); err != nil || o.Paid {
+			return o, err
+		}
+		if applied != nil {
+			return Order{}, applied
+		}
+	}
+	// Only a payment known to be over may be replaced.
+	if name != payment.Midtrans || !o.ended() {
+		return Order{}, ErrInput
+	}
+	var product Product
+	for _, p := range s.Products {
+		if p.Slug == o.Product.Slug && !p.Soon {
+			product = p
+			break
+		}
+	}
+	if product.Price <= 0 || product.Account != o.Product.Account || product.GatewayName() != name {
+		return Order{}, ErrInput
+	}
+	if product.Account {
+		// The bought account was proven when the first order was made.
+		if product.Months < 1 || s.Accounts == nil || o.AccountUID == "" {
+			return Order{}, errors.New("shop: account delivery unavailable")
+		}
+	} else if _, err := s.SigningKey(product.Project, product.KeyID); err != nil {
+		return Order{}, errors.New("shop: signing unavailable")
+	}
+	return s.once(ctx, o.ViewToken, "change", o.ID, "", func(next string) (Order, error) {
+		return s.open(ctx, next, product, o.Email, o.AccountUID)
+	})
 }
 
 func (o Order) Path() string { return "/orders/" + o.ID + "/" + o.ViewToken }
@@ -484,7 +569,14 @@ func (s *Service) apply(ctx context.Context, name string, status payment.Status)
 		if o.Paid {
 			return s.Deliver(ctx, o.ID)
 		}
+		if status.State == "pending" && o.ended() && o.State != "abandoned" && o.State != "" {
+			// A delayed pending status must not reopen an ended payment.
+			return nil
+		}
 		o.State = status.State
+		if status.Method != "" {
+			o.Method = status.Method
+		}
 		if status.Paid {
 			if !o.Product.Account {
 				key, err := s.SigningKey(o.Product.Project, o.Product.KeyID)

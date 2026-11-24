@@ -133,3 +133,21 @@ func TestProviderFailuresDoNotLeakSecrets(t *testing.T) {
 		t.Fatal("wrong production endpoints")
 	}
 }
+
+func TestCancel(t *testing.T) {
+	for code, ok := range map[string]bool{"200": true, "412": false, "404": false} {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.Method != http.MethodPost || r.URL.Path != "/order-1/cancel" {
+				t.Error(r.Method, r.URL.Path)
+			}
+			w.Write([]byte(`{"status_code":"` + code + `"}`))
+		}))
+		c := New("test-key", false)
+		c.statusURL = server.URL + "/"
+		if err := c.Cancel(context.Background(), "order-1"); (err == nil) != ok {
+			t.Error(code, err)
+		}
+		server.Close()
+	}
+	var _ payment.Canceler = (*Client)(nil)
+}

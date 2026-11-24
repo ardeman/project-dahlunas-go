@@ -114,6 +114,32 @@ func registerShop(mux *http.ServeMux, config Options) {
 		}
 		http.Redirect(w, r, p.Href(o.Path()), http.StatusSeeOther)
 	})
+	// The order link's token authorizes this, like viewing the code does. The
+	// order page sends no referrer, so its forms carry no usable Origin.
+	mux.HandleFunc("POST /orders/{id}/{token}/change", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Referrer-Policy", "no-referrer")
+		p := newPage(r, config)
+		if !limiter.allow(time.Now()) {
+			w.Header().Set("Retry-After", "2")
+			fail(w, p, "Terlalu banyak permintaan. Coba lagi nanti.", "Too many requests. Try again shortly.", http.StatusTooManyRequests)
+			return
+		}
+		o, err := s.ChangePayment(r.Context(), r.PathValue("id"), r.PathValue("token"))
+		if errors.Is(err, shop.ErrNotFound) {
+			fail(w, p, "Halaman tidak ditemukan.", "Page not found.", http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, shop.ErrInput) {
+			fail(w, p, "Metode pembayaran pesanan ini tidak bisa diganti. Pembayaran yang lama masih berlaku.", "This order's payment method can't be changed. The existing payment still stands.", http.StatusConflict)
+			return
+		}
+		if err != nil {
+			fail(w, p, "Metode pembayaran belum bisa diganti. Kembali ke halaman pesanan dan coba lagi sebentar lagi.", "The payment method can't be changed right now. Go back to the order page and try again shortly.", 503)
+			return
+		}
+		http.Redirect(w, r, p.Href(o.Path()), http.StatusSeeOther)
+	})
 	mux.HandleFunc("GET /orders/{id}/{token}", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("Referrer-Policy", "no-referrer")

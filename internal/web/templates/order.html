@@ -5,7 +5,7 @@
 <script src="/static/checkout.js" defer></script><script src="/static/recent.js" defer></script></head>
 <body>{{template "header" .}}
 <main>
-<div id="order" data-project="{{.Order.GroupSlug}}" data-path="{{.Order.Path}}" data-state="{{if .Order.Paid}}paid{{else}}{{.Order.State}}{{end}}" data-created="{{.Order.Created.UnixMilli}}" {{if not .Order.Paid}}hx-get="{{.Href .Order.Path}}" hx-trigger="every 5s" hx-select="#order" hx-swap="outerHTML"{{end}}>
+<div id="order" data-project="{{.Order.GroupSlug}}" data-path="{{.Order.Path}}" data-state="{{if .Order.Paid}}paid{{else}}{{.Order.State}}{{end}}" data-method="{{.Order.Method}}" data-created="{{.Order.Created.UnixMilli}}" {{if not .Order.Paid}}hx-get="{{.Href .Order.Path}}" hx-trigger="every 5s" hx-select="#order" hx-swap="outerHTML"{{end}}>
 <p class="product">{{.T .Order.Product.NameID .Order.Product.NameEN}}</p>
 {{if .Order.Paid}}
 <p class="stamp" aria-hidden="true">Lunas</p>
@@ -27,11 +27,12 @@
 {{if eq .Order.Product.GatewayName "lemonsqueezy"}}{{if .Order.CheckoutURL}}<a href="{{.Order.CheckoutURL}}" rel="noreferrer">{{.T "Bayar melalui Lemon Squeezy" "Pay with Lemon Squeezy"}}</a>{{end}}{{else}}
 <p class="muted">{{.T "Pilih metode di bawah. Halaman ini diperbarui otomatis setelah bayar." "Choose a method below. This page updates automatically after you pay."}}</p>
 {{end}}
+{{if .Order.CanChangePayment}}<form method="post" action="{{.Href (print .Order.Path "/change")}}" data-confirm="{{.T "Batalkan pembayaran ini dan pilih metode lain? Jika Anda sudah membayar, jangan lanjutkan; tunggu halaman ini diperbarui." "Cancel this payment and choose another method? If you already paid, don't continue; wait for this page to update."}}"><button type="submit" id="change-payment" class="quiet">{{.T "Ganti metode pembayaran" "Change payment method"}}</button></form>{{end}}
 {{else}}<p>{{.T "Pembayaran belum berhasil atau telah berakhir." "Payment was unsuccessful or has ended."}}</p><a href="{{.Href "/"}}">{{.T "Kembali ke toko" "Back to shop"}}</a>{{end}}
 <p id="payment-error" role="status"></p>
 {{end}}
 <p class="muted">{{.T "Pesanan" "Order"}}: {{.Order.ID}}</p>
 <p>{{if .Order.Product.Account}}{{.T "Simpan tautan ini secara pribadi untuk melihat status pesanan." "Keep this link private to check your order status."}}{{else}}{{.T "Simpan tautan ini secara pribadi untuk melihat kode Anda." "Keep this link private to retrieve your code."}}{{end}}</p>
 </div>
-{{if and (not .Order.Paid) (eq .Order.Product.GatewayName "midtrans") .Order.SnapToken}}{{if or (eq .Order.State "pending") (eq .Order.State "capture")}}<div id="snap-container" data-snap-token="{{.Order.SnapToken}}"></div><button type="button" id="snap-resume" hidden>{{.T "Lanjutkan pembayaran" "Continue payment"}}</button>{{end}}{{end}}
+{{if and (not .Order.Paid) (eq .Order.Product.GatewayName "midtrans") .Order.SnapToken}}{{if or (eq .Order.State "pending") (eq .Order.State "capture")}}<div id="snap-container" data-snap-token="{{.Order.SnapToken}}" data-method="{{.Order.Method}}"></div><button type="button" id="snap-resume" hidden>{{.T "Lanjutkan pembayaran" "Continue payment"}}</button>{{end}}{{end}}
 </main>{{template "footer" .}}</body></html>

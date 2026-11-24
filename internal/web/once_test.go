@@ -53,4 +53,29 @@ func TestResubmittedFormOpensSameOrder(t *testing.T) {
 	if b := w.Body.String(); !strings.Contains(b, `data-project="coba-lagi"`) || !strings.Contains(b, `data-state="pending"`) || !strings.Contains(b, "/static/recent.js") {
 		t.Fatal(b)
 	}
+	if strings.Contains(w.Body.String(), "/change") {
+		t.Fatal("nothing to change before a method is chosen")
+	}
+	for id, o := range store.orders {
+		if strings.Contains(path, id) {
+			o.Method = "echannel"
+			store.orders[id] = o
+		}
+	}
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest("GET", path, nil))
+	if b := w.Body.String(); !strings.Contains(b, `action="`+path+`/change"`) || strings.Count(b, `data-method="echannel"`) != 2 {
+		t.Fatal(b)
+	}
+	// This gateway can't cancel, so the live payment must stay the only one.
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest("POST", path+"/change", nil))
+	if w.Code != 409 || len(store.orders) != 2 {
+		t.Fatal(w.Code, len(store.orders))
+	}
+	w = httptest.NewRecorder()
+	h.ServeHTTP(w, httptest.NewRequest("POST", path[:len(path)-1]+"x/change", nil))
+	if w.Code != 404 {
+		t.Fatal(w.Code)
+	}
 }

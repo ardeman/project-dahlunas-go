@@ -27,10 +27,12 @@ type Session struct {
 }
 
 type Status struct {
-	ID                                     string
-	Amount                                 int64
-	State                                  string
-	Paid                                   bool
+	ID     string
+	Amount int64
+	State  string
+	Paid   bool
+	// Method is the chosen payment type, empty when the gateway has none.
+	Method                                 string
 	Currency, VariantID, Proof, ProviderID string
 }
 
@@ -39,6 +41,12 @@ type Status struct {
 type Gateway interface {
 	Create(context.Context, Checkout) (Session, error)
 	Notification(context.Context, []byte, string) (Status, error)
+}
+
+// Canceler cancels a payment that is still pending. Callers must check the
+// authoritative status afterwards rather than trust its result alone.
+type Canceler interface {
+	Cancel(context.Context, string) error
 }
 
 // Checker fetches an order's authoritative status without a notification, so

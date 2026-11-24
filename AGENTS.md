@@ -32,6 +32,8 @@ A change is done only when the **Checks** command in `README.md` passes. If you 
 
 Record architectural choices here as one line each: date, decision, reason.
 
+- 2026-11-24: The order stores the payment type Midtrans reports, since Snap reports neither its height nor the method chosen: the page then shortens the frame and offers "Change payment method", which cancels at Midtrans, confirms the authoritative status, and only then opens a replacement order (Midtrans never accepts a used order ID again). A payment that wins the race is kept. Cards are excluded, because cancelling could void a charge being captured.
+
 - 2026-11-24: A submitted checkout form makes at most one usable order: its order ID is a hash of the form's CSRF value and inputs, checked before Turnstile since its tokens work once. A recent order is offered again from the browser's own storage (24 hours), never looked up by email, which would reveal other people's purchases. Buying again stays possible: Plus months add up and codes can be bought for others.
 
 - 2026-11-09: The shop has an `/about` business profile (owner Ardeman as an individual, Jakarta, contact, products, how buying works) linked from every footer, and projects carry optional `about` paragraphs and a `website`; Midtrans's review asked for a business profile and complete product descriptions on the site.

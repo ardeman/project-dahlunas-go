@@ -64,6 +64,31 @@
     }
   });
 
+  // Each poll reports the method chosen in Snap, which sizes its frame, and
+  // whether the payment ended elsewhere, such as in another tab.
+  document.body.addEventListener('htmx:afterSettle', function () {
+    const order = document.getElementById('order');
+    const box = document.getElementById('snap-container');
+    if (!order || !box) return;
+    if (order.dataset.state === 'pending' || order.dataset.state === 'capture') {
+      box.dataset.method = order.dataset.method;
+    } else {
+      clearSnap();
+    }
+  });
+
+  let changing = false;
+  document.body.addEventListener('submit', function (event) {
+    const question = event.target.dataset.confirm;
+    if (!question) return;
+    if (changing || !window.confirm(question)) {
+      event.preventDefault();
+      return;
+    }
+    changing = true;
+    setTimeout(function () { changing = false; }, 15000);
+  });
+
   const resume = document.getElementById('snap-resume');
   if (resume) {
     resume.addEventListener('click', function () {
