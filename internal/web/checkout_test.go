@@ -177,7 +177,7 @@ func TestPoliciesAndDisabledCheckout(t *testing.T) {
 		if w.Code != 200 || !strings.Contains(w.Body.String(), `lang="en"`) {
 			t.Fatal(path, w.Code)
 		}
-		// Payment reviewers must see that the codes are licenses for Ardeman's own apps, not resold vouchers.
+		// Payment reviewers must see that the products are for Ardeman's own apps, not resold vouchers.
 		if !strings.Contains(w.Body.String(), "not third-party vouchers") {
 			t.Fatal(path, "footer does not say what the codes are")
 		}

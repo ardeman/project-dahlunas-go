@@ -71,4 +71,19 @@ func TestAccountCheckoutPage(t *testing.T) {
 	if w.Code != 200 || !strings.Contains(w.Body.String(), "Catat Saja Plus · 3 months · Rp 49.000") || !strings.Contains(w.Body.String(), `id="snap-resume" hidden>Continue payment<`) {
 		t.Fatal(w.Code, w.Body.String())
 	}
+	// Policies cover prepaid access in both languages.
+	for path, want := range map[string]string{
+		"/terms?lang=en":   "Catat Saja Plus · 3 months · Rp 49.000",
+		"/terms?lang=id":   "tidak diperpanjang atau ditagih otomatis",
+		"/privacy?lang=en": "stores the account ID",
+		"/privacy?lang=id": "menyimpan ID dan email akun",
+		"/about?lang=en":   "Prepaid access needs no code",
+		"/about?lang=id":   "Akses prabayar tidak memerlukan kode",
+	} {
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, httptest.NewRequest("GET", "https://shop.example"+path, nil))
+		if w.Code != 200 || !strings.Contains(w.Body.String(), want) {
+			t.Fatalf("%s: missing %q", path, want)
+		}
+	}
 }

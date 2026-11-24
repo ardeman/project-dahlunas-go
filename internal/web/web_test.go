@@ -73,10 +73,10 @@ func TestHomeLanguages(t *testing.T) {
 		target, acceptLanguage string
 		want, unwanted         []string
 	}{
-		{"/", "", []string{`<html lang="id">`, "Bayar sekali, dapatkan kode.", `href="/terms"`, `href="?lang=en"`}, []string{"Pay once, get your code."}},
-		{"/", "en-US,en;q=0.9,id;q=0.8", []string{`<html lang="en">`, "Pay once, get your code.", `href="/terms"`}, []string{"Bayar sekali, dapatkan kode."}},
-		{"/?lang=en", "", []string{`<html lang="en">`, "Pay once, get your code.", `href="/terms?lang=en"`}, nil},
-		{"/?lang=id", "en", []string{`<html lang="id">`, "Bayar sekali, dapatkan kode.", `href="/terms?lang=id"`}, nil},
+		{"/", "", []string{`<html lang="id">`, "Bayar sekali, langsung pakai.", `href="/terms"`, `href="?lang=en"`}, []string{"Pay once, start using it."}},
+		{"/", "en-US,en;q=0.9,id;q=0.8", []string{`<html lang="en">`, "Pay once, start using it.", `href="/terms"`}, []string{"Bayar sekali, langsung pakai."}},
+		{"/?lang=en", "", []string{`<html lang="en">`, "Pay once, start using it.", `href="/terms?lang=en"`}, nil},
+		{"/?lang=id", "en", []string{`<html lang="id">`, "Bayar sekali, langsung pakai.", `href="/terms?lang=id"`}, nil},
 		{"/?lang=fr", "", []string{`<html lang="id">`, `href="/terms"`}, nil},
 	} {
 		r := httptest.NewRequest(http.MethodGet, tc.target, nil)
